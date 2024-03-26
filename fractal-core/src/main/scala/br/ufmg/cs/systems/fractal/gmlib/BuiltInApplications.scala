@@ -167,6 +167,24 @@ class BuiltInApplications(self: FractalGraph) extends Logging {
    }
 
    /**
+    * Generated a sample of induced subgraphs using the pattern-oblivious
+    * approach
+    * @param numVertices how many vertices in the subgraphs
+    * @param fraction between 0 and 1, representing a percentage
+    * @return fractoid
+    */
+   def inducedSubgraphsSamplePO(numVertices: Int, fraction: Double, seed: Long)
+   : Fractoid[VertexInducedSubgraph] = {
+      val senumClass = classOf[SamplingEnumerator[VertexInducedSubgraph]]
+      val fractionKey = "sampling_fraction"
+      val seedKey = "sampling_seed"
+      self.set(fractionKey, fraction)
+         .set(seedKey, seed)
+         .vfractoid
+         .extend(numVertices, senumClass)
+   }
+
+   /**
     * Motifs counting by listing and using the PO paradigm
     * @param numVertices motifs size
     * @return RDD representing a mapping (CanonicalPattern -> Count)
