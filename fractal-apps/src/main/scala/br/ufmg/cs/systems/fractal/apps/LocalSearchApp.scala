@@ -1,14 +1,16 @@
 package br.ufmg.cs.systems.fractal.apps
 
 import br.ufmg.cs.systems.fractal._
-import br.ufmg.cs.systems.fractal.aggregation.{LongObjSubgraphAggregation, ObjLongSubgraphAggregation}
+import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
+import br.ufmg.cs.systems.fractal.graph.MainGraph
 import br.ufmg.cs.systems.fractal.subgraph.{SerializableSubgraph, VertexInducedSubgraph}
 import br.ufmg.cs.systems.fractal.util.Logging
+import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView
 import org.apache.spark.{SparkConf, SparkContext}
 
 case class SubgraphAndCost(var subgraph: SerializableSubgraph, var cost: Long)
 
-class LocalSearchAggregation(objectiveFunction: SerializableSubgraph => Long)
+class LocalSearchAggregation(objectiveFunction: (SerializableSubgraph, MainGraph) => Long)
    extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] {
 
    override def reduce(sc1: SubgraphAndCost,
@@ -20,10 +22,14 @@ class LocalSearchAggregation(objectiveFunction: SerializableSubgraph => Long)
    }
 
    override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
+      val graph = internalSubgraph.getMainGraph
       var subgraph = SerializableSubgraph.fromInternalSubgraph(internalSubgraph)
-      var cost = 0L
+      var cost = objectiveFunction(subgraph, graph)
+      val neighbors = new IntArrayListView
 
       // DANIEL TODO: do local search on subgraph ...
+      // exaḿple: subgraph.neighborhoodVertices(0, neighbors) -- get
+      // neighbors of vertex 0 in graph
 
       map(0L, SubgraphAndCost(subgraph, cost)) // always zero, replace existing value
    }
@@ -46,20 +52,24 @@ object LocalSearchApp extends Logging {
     // input graph
     val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
 
+    // sampling k-subgraphs
     val subgraphs = fgraph.inducedSubgraphsSamplePO(numVertices, fraction, seed)
 
-    val objectiveFunction = (subgraph: SerializableSubgraph) => {
+    val objectiveFunction = (subgraph: SerializableSubgraph, graph: MainGraph) => {
       // user-defined objective function
       // DANIEL TODO: implement objective function
       0L
     }
 
-
+    // aggregation strategy
     val aggregation = new LocalSearchAggregation(objectiveFunction)
 
-    val result = subgraphs.aggregationLongObj(aggregation).collect().toList
+    // from k-subgraphs, perform local search on each and aggregate to keep
+    // the best solution
+    val result = subgraphs.aggregationLongObj(aggregation)
+       .collect().head._2
 
-    logApp(s"Result: ${result}")
+    logApp(s"BestSolution: ${result}")
 
     // environment cleaning
     fc.stop()

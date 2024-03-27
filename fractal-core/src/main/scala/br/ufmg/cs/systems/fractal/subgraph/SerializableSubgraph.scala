@@ -1,5 +1,6 @@
 package br.ufmg.cs.systems.fractal.subgraph
 
+import br.ufmg.cs.systems.fractal.subgraph.SerializableSubgraph.fromSubgraphToJSON
 import br.ufmg.cs.systems.fractal.util.Logging
 
 import scala.collection.mutable.ArrayBuffer
@@ -20,7 +21,8 @@ case class SerializableSubgraph(vids: Array[Int], eids: Array[Int],
    }
 
    override def toString: String = {
-      s"SerializableSubgraph(${vids.mkString(",")}, ${eids.mkString(",")}, ${pedges.mkString(",")}, ${pvlabels.mkString(",")}, ${pelabels.mkString(",")})"
+      //s"SerializableSubgraph(${vids.mkString(",")}, ${eids.mkString(",")}, " +s"${pedges.mkString(",")}, ${pvlabels.mkString(",")}, ${pelabels.mkString(",")})"
+      s"${fromSubgraphToJSON(this)}"
    }
 }
 
@@ -59,9 +61,13 @@ object SerializableSubgraph {
    }
 
    def fromInternalSubgraphToJSON(s: Subgraph): String = {
-      implicit val formats = DefaultFormats
-
       val subgraph = fromInternalSubgraph(s)
+      fromSubgraphToJSON(subgraph)
+   }
+
+   def fromSubgraphToJSON(subgraph: SerializableSubgraph): String = {
+
+      implicit val formats = DefaultFormats
 
 
       val numVertices = subgraph.vids.length
