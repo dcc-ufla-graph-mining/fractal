@@ -26,28 +26,32 @@ class LocalSearchAggregation(objectiveFunction: (SerializableSubgraph, MainGraph
    override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
       val graph = internalSubgraph.getMainGraph
       var subgraph = SerializableSubgraph.fromInternalSubgraph(internalSubgraph)
-      var cost = objectiveFunction(subgraph, graph)
-      var results = (1L, 0, 0, new mutable.ArrayBuffer[Int](), new mutable.ArrayBuffer[Int]())
       
-      while (results._1 > 0) {
-         subgraph = Utils.relabel(subgraph, graph)
-         var articulation = Utils.tarjan(subgraph)
-         
-         results = aprimoration(graph, subgraph, articulation, 3, 4) 
-         if(results._1 > 0) {
-            var new_vids = subgraph.vids.filter(_ != results._2) :+ results._3
-            var new_pvlabels = mutable.ArrayBuffer[Int]()
-            var new_eids = mutable.ArrayBuffer[Int]()
-            var new_pelabels = mutable.ArrayBuffer[Int]()
+      var articulation = Utils.tarjan(subgraph)
+      var results = Utils.aprimoration(graph, subgraph, articulation, 3, 4) 
 
-            subgraph.eids.foreach( edge => new_eids.addOne(edge) )
-            results._4.foreach( edge => new_eids.subtractOne(edge) ) 
-            results._5.foreach( edge => new_eids.addOne(edge) ) 
-            new_eids.foreach( eid => new_pelabels.addOne(graph.firstEdgeLabel(eid)))
-            subgraph = subgraph.copy(vids = new_vids, pvlabels = new_pvlabels.toArray, eids = new_eids.toArray, pelabels = new_pelabels.toArray)
-            subgraph = Utils.relabel(subgraph, graph)
-         }
+      while (results._1 > 0) {
+         var new_vids = mutable.ArrayBuffer[Int]()
+         var new_pvlabels = mutable.ArrayBuffer[Int]()
+         var new_eids = mutable.ArrayBuffer[Int]()
+         var new_pelabels = mutable.ArrayBuffer[Int]()
+
+         subgraph.vids.foreach( vid => new_vids.addOne(vid))
+         if(results._2 != -1) {new_vids.subtractOne(results._2)}
+         if(results._3 != -1) {new_vids.addOne(results._3)}
+         new_vids.foreach( vid => new_pvlabels.addOne(graph.firstVertexLabel(vid)))
+         subgraph.eids.foreach( edge => new_eids.addOne(edge) )
+         results._4.foreach( edge => new_eids.subtractOne(edge) ) 
+         results._5.foreach( edge => new_eids.addOne(edge) ) 
+         new_eids.foreach( eid => new_pelabels.addOne(graph.firstEdgeLabel(eid)))
+         
+         subgraph = subgraph.copy(vids = new_vids.toArray, pvlabels = new_pvlabels.toArray, eids = new_eids.toArray, pelabels = new_pelabels.toArray)
+         subgraph = Utils.relabel(subgraph, graph)
+         
+         articulation = Utils.tarjan(subgraph)
+         results = Utils.aprimoration(graph, subgraph, articulation, 3, 4) 
       }
+
       map(0L, SubgraphAndCost(subgraph, objectiveFunction(subgraph, graph))) // always zero, replace existing value
    }
 }
@@ -195,7 +199,7 @@ object Utils {
             edges_removed.addOne(element)
          }  
       }
-      (cost, edges_removed)
+      (-cost, edges_removed)
    }
 
    def try_add_remove(subgraph: SerializableSubgraph, graph: MainGraph, node: Int, node_possible: Int): (Long, mutable.ArrayBuffer[Int], mutable.ArrayBuffer[Int]) = {
@@ -248,12 +252,6 @@ object Utils {
       var hash = mutable.HashMap[Int,Int]()
       var counter = 0
       
-      /*
-      val iterator = subgraph.getVertices().iterator()
-      for (i <- 0 until subgraph.getNumVertices()) {
-         hash.put(iterator.nextInt(), i)
-      }
-      */
 
       low(0) = 0
       discover_time(0) = 0
@@ -263,7 +261,6 @@ object Utils {
       articulation.foreach{ x => 
          response.addOne(subgraph.vids(x))
       }
-
       response
    }
 
