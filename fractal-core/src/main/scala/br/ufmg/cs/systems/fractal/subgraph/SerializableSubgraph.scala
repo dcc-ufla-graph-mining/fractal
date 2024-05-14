@@ -45,7 +45,7 @@ object SerializableSubgraph {
       }
 
       val pattern = s.quickPattern()
-      pattern.turnCanonical()
+      //pattern.turnCanonical()
       val patternEdges = pattern.getEdges
       i = 0
       while (i < numEdges) {
