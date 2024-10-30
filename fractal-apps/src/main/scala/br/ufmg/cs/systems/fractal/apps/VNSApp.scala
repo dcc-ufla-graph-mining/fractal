@@ -2,13 +2,17 @@ package br.ufmg.cs.systems.fractal.apps
 
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.{LongObjSubgraphAggregation, ObjLongSubgraphAggregation}
+import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.{SerializableSubgraph, VertexInducedSubgraph}
 import br.ufmg.cs.systems.fractal.util.Logging
 import org.apache.spark.{SparkConf, SparkContext}
 
-case class SubgraphAndCost(var subgraph: SerializableSubgraph, var cost: Long)
+import scala.jdk.FunctionConverters._
 
-class LocalSearchAggregation(objectiveFunction: SerializableSubgraph => Long)
+case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
+                           var cost: Int)
+
+class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgraph => Int)
   extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] {
 
   override def reduce(sc1: SubgraphAndCost,
@@ -20,16 +24,26 @@ class LocalSearchAggregation(objectiveFunction: SerializableSubgraph => Long)
   }
 
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
-    var subgraph = SerializableSubgraph.fromInternalSubgraph(internalSubgraph)
-    var cost = 0L
+    val javaObjectiveFunction = objectiveFunction.asJavaToIntFunction
+    val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, javaObjectiveFunction)
+    val target = subgraph.copy()
 
-    // TODO: do local search on subgraph ...
+    var cost = 0
 
-    map(0L, SubgraphAndCost(subgraph, cost)) // always zero, replace existing value
+    val neighborhoodStructures = Array(
+      new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
+
+    val vnsOpt = new VNSSubgraphOptimization()
+    val improvement = vnsOpt.run(subgraph, target, neighborhoodStructures)
+
+    Logging.logApp(s"initialSolution=${subgraph} finalSolution=${target}" +
+       s" improvement=${improvement}")
+
+    map(0L, SubgraphAndCost(target, target.cost)) // always zero, replace existing value
   }
 }
 
-object LocalSearchApp extends Logging {
+object VNSApp extends Logging {
   def main(args: Array[String]): Unit = {
     // environment setup (Spark)
     val conf = new SparkConf().setAppName("LocalSearchApp")
@@ -45,13 +59,15 @@ object LocalSearchApp extends Logging {
 
     // input graph
     val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
+       .set("ws_external", false)
 
     val subgraphs = fgraph.inducedSubgraphsSamplePO(numVertices, fraction, seed)
 
-    val objectiveFunction = (subgraph: SerializableSubgraph) => {
+    val objectiveFunction = (subgraph: VertexInducedOptimizationSubgraph) => {
       // user-defined objective function
-      // TODO: implement objective function
-      0L
+      // TODO: implement objective function (let's take heaviest subgraph
+      // first), sum of edges (labels)
+      0
     }
 
 
@@ -59,7 +75,9 @@ object LocalSearchApp extends Logging {
 
     val result = subgraphs.aggregationLongObj(aggregation).collect().toList
 
-    logApp(s"Result: ${result}")
+    for (it <- result) {
+      logApp(s"Result: ${it}")
+    }
 
     // environment cleaning
     fc.stop()
