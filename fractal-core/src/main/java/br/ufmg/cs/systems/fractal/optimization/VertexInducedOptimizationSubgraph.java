@@ -69,7 +69,7 @@ public class VertexInducedOptimizationSubgraph implements Serializable {
    }
 
    /**
-    * Make a copy given an existing optimization subgraph
+    * Make a copy given an existing optimization subgraph TODO
     */
    public VertexInducedOptimizationSubgraph copy() {
       return null;
@@ -99,8 +99,16 @@ public class VertexInducedOptimizationSubgraph implements Serializable {
     * (along with its edges) -- need to maintain structures consistent
     * @param vertexToAdd
     */
-   private void addVertex(int vertexToAdd) {
-
+   public void addVertex(int vertexToAdd) {
+      accessVertexNeighborhood(vertexToAdd, reusableVertexNeighbors, reusableEdgeNeighbors);
+      IntIntMap adjList = HashIntIntMaps.newMutableMap();
+      adjLists.put(vertexToAdd, adjList);
+      for(int i = 0; i < reusableVertexNeighbors.size(); i++) {
+         int vertexNeighbor = reusableVertexNeighbors.get(i);
+         int edge = reusableEdgeNeighbors.get(i);
+         adjLists.get(vertexToAdd).put(vertexNeighbor, edge);
+         adjLists.get(vertexNeighbor).put(vertexToAdd, edge);
+      }
    }
 
    /**
@@ -110,7 +118,12 @@ public class VertexInducedOptimizationSubgraph implements Serializable {
     * @param vertexToRemove
     */
    public void removeVertex(int vertexToRemove) {
-
+      accessVertexNeighborhood(vertexToRemove, reusableVertexNeighbors, reusableEdgeNeighbors);
+      for(int i = 0; i < reusableVertexNeighbors.size(); i++){
+         int vertexNeighbor = reusableVertexNeighbors.get(i);
+         adjLists.get(vertexNeighbor).remove(vertexToRemove);
+      }
+      adjLists.remove(vertexToRemove);
    }
 
    /**
