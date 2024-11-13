@@ -19,7 +19,7 @@ public class VNSSubgraphOptimization implements Logging {
 
       logApp(String.format("[%d] subgraph=%s", id, subgraph));
 
-      // TODO: code to test a specific neighborhood
+      // code to test a specific neighborhood (TODO: check if this is correct)
       int idx = 0; // change this to test another neighborhood
       SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
 

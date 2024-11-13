@@ -1,9 +1,9 @@
 package br.ufmg.cs.systems.fractal.apps
 
 import br.ufmg.cs.systems.fractal._
-import br.ufmg.cs.systems.fractal.aggregation.{LongObjSubgraphAggregation, ObjLongSubgraphAggregation}
+import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
 import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
-import br.ufmg.cs.systems.fractal.subgraph.{SerializableSubgraph, VertexInducedSubgraph}
+import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -13,7 +13,7 @@ case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
                            var cost: Int)
 
 class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgraph => Int)
-  extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] {
+  extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] with Logging {
 
   override def reduce(sc1: SubgraphAndCost,
                       sc2: SubgraphAndCost): Unit = {
@@ -26,18 +26,15 @@ class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgrap
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
     val javaObjectiveFunction = objectiveFunction.asJavaToIntFunction
     val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, javaObjectiveFunction)
-    val target = subgraph.copy()
-
     val neighborhoodStructures = Array(
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
 
     val vnsOpt = new VNSSubgraphOptimization()
     val improvement = vnsOpt.run(subgraph, neighborhoodStructures)
 
-    Logging.logApp(s"initialSolution=${subgraph} finalSolution=${target}" +
-       s" improvement=${improvement}")
-
-    map(0L, SubgraphAndCost(target, target.cost)) // always zero, replace existing value
+    logApp(s"solution=${subgraph} improvement=${improvement}")
+    val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
+    map(0L, subgraphAndCost)
   }
 }
 
@@ -63,19 +60,24 @@ object VNSApp extends Logging {
 
     val objectiveFunction = (subgraph: VertexInducedOptimizationSubgraph) => {
       // user-defined objective function
-      // TODO: implement objective function (let's take heaviest subgraph
-      // first), sum of edges (labels)
-      0
+      // TODO: implement a simple objective function that returns the most simple
+      // density definition of an undirected simple graph https://en.wikipedia.org/wiki/Dense_graph
+      // 2*num_edges / (num_vertices * (num_vertices - 1))
+      var cost = 0
+      val cur = subgraph.getAdjLists.cursor()
+      while (cur.moveNext()) {
+        cost += cur.value().size()
+      }
+
+      cost
     }
 
 
     val aggregation = new LocalSearchAggregation(objectiveFunction)
 
-    val result = subgraphs.aggregationLongObj(aggregation).collect().toList
+    val bestSubgraph = subgraphs.aggregationLongObj(aggregation).collect().head._2
 
-    for (it <- result) {
-      logApp(s"Result: ${it}")
-    }
+    logApp(s"BestSubgraph=${bestSubgraph.subgraph} BestCost=${bestSubgraph.cost}")
 
     // environment cleaning
     fc.stop()
