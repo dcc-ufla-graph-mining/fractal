@@ -28,13 +28,11 @@ class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgrap
     val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, javaObjectiveFunction)
     val target = subgraph.copy()
 
-    var cost = 0
-
     val neighborhoodStructures = Array(
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
 
     val vnsOpt = new VNSSubgraphOptimization()
-    val improvement = vnsOpt.run(subgraph, target, neighborhoodStructures)
+    val improvement = vnsOpt.run(subgraph, neighborhoodStructures)
 
     Logging.logApp(s"initialSolution=${subgraph} finalSolution=${target}" +
        s" improvement=${improvement}")

@@ -94,6 +94,16 @@ public class VertexInducedOptimizationSubgraph implements Serializable {
       underlyingGraph.neighborhoodEdges(vertex, eneighbors);
    }
 
+   public IntArrayListView neighborhoodVertices(int vertex) {
+      underlyingGraph.neighborhoodVertices(vertex, reusableVertexNeighbors);
+      return reusableVertexNeighbors;
+   }
+
+   public IntArrayListView neighborhoodEdges(int vertex) {
+      underlyingGraph.neighborhoodEdges(vertex, reusableEdgeNeighbors);
+      return reusableEdgeNeighbors;
+   }
+
    /**
     * TODO: this function must update this subgraph by adding a new vertex
     * (along with its edges) -- need to maintain structures consistent

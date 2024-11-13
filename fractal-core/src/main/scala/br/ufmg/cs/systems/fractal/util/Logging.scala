@@ -35,6 +35,27 @@ trait Logging {
 
    /** **/
 
+   protected def logInfo(msg: String): Unit = if (log.isInfoEnabled) {
+      log.info(msg)
+   }
+
+   protected def logWarn(msg: String): Unit = if (log.isEnabledFor(Level.WARN)) {
+      log.warn(msg)
+   }
+
+   protected def logDebug(msg: String): Unit = if (log.isDebugEnabled) {
+      log.debug(msg)
+   }
+
+   protected def logError(msg: String): Unit = if (log.isEnabledFor(Level.ERROR)) {
+      log.error(msg)
+   }
+
+   protected def logApp(msg: String): Unit = if (log.isEnabledFor(FractalAppLogLevel.APP)) {
+      log.log(FractalAppLogLevel.APP, msg)
+   }
+
+
    protected def setLogLevel(level: String): Unit = {
       val logLevel = Level.toLevel(level.toUpperCase, FractalAppLogLevel.APP)
       LogManager.getRootLogger.setLevel(logLevel)
