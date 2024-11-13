@@ -1,0 +1,5 @@
+.idea
+build
+.gradle
+fractal-core/build
+fractal-apps/build
