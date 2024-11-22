@@ -21,6 +21,9 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
 
    private transient final WriteExternalConsumer writerExternalConsumer = new WriteExternalConsumer();
 
+   private int numVertices;
+   private int numEdges;
+   private int density;
    private int cost;
 
    transient private ToIntFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
@@ -39,7 +42,8 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    private final IntArrayListView reusableEdgeNeighbors =
            new IntArrayListView();
 
-   public VertexInducedOptimizationSubgraph() {}
+   public VertexInducedOptimizationSubgraph() {
+   }
 
    /**
     * Build a subgraph proper for optimization (local search, for example)
@@ -52,8 +56,8 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       this.adjLists = HashIntObjMaps.newMutableMap();
 
       Pattern pattern = subgraph.quickPattern();
-      int numVertices = subgraph.getNumVertices();
-      int numEdges = subgraph.getNumEdges();
+      this.numVertices = subgraph.getNumVertices();
+      this.numEdges = subgraph.getNumEdges();
 
       // create adjacency lists for each vertex
       for (int i = 0; i < numVertices; ++i) {
@@ -74,7 +78,8 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          adjLists.get(dstVertex).put(srcVertex, edge);
       }
 
-      this.cost = objectiveFunction.applyAsInt(this);
+      updateDensity();
+      updateCost();
    }
 
    /**
@@ -94,6 +99,8 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    public int cost() {
       return cost;
    }
+
+   public int getDensity() { return density; }
 
    private int getVertexLabel(int vertex) {
       return underlyingGraph.firstVertexLabel(vertex);
@@ -124,6 +131,16 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       return adjLists;
    }
 
+   private void updateCost()
+   {
+      this.cost = objectiveFunction.applyAsInt(this);
+   }
+
+   private void updateDensity()
+   {
+      this.density = 100 * (2 * (numEdges)) / (numVertices * (numVertices - 1));
+   }
+
    /**
     * Adds a new vertex to this subgraph. Assumes that adding the vertex does not disconnect the subgraph.
     * TODO: update cost of this subgraph
@@ -132,13 +149,25 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    public void addVertex(int vertexToAdd) {
       accessVertexNeighborhood(vertexToAdd, reusableVertexNeighbors, reusableEdgeNeighbors);
       IntIntMap adjList = HashIntIntMaps.newMutableMap();
+
       adjLists.put(vertexToAdd, adjList);
+      this.numVertices++;
+
       for(int i = 0; i < reusableVertexNeighbors.size(); i++) {
          int vertexNeighbor = reusableVertexNeighbors.get(i);
          int edge = reusableEdgeNeighbors.get(i);
-         adjLists.get(vertexToAdd).put(vertexNeighbor, edge);
-         adjLists.get(vertexNeighbor).put(vertexToAdd, edge);
+         IntIntMap neighborAdjList = adjLists.get(vertexNeighbor);
+
+         if(neighborAdjList != null)
+         {
+            adjLists.get(vertexToAdd).put(vertexNeighbor, edge);
+            neighborAdjList.put(vertexToAdd, edge);
+            this.numEdges++;
+         }
       }
+
+      updateDensity();
+      updateCost();
    }
 
    /**
@@ -150,11 +179,22 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     */
    public void removeVertex(int vertexToRemove) {
       accessVertexNeighborhood(vertexToRemove, reusableVertexNeighbors, reusableEdgeNeighbors);
+
       for(int i = 0; i < reusableVertexNeighbors.size(); i++){
          int vertexNeighbor = reusableVertexNeighbors.get(i);
-         adjLists.get(vertexNeighbor).remove(vertexToRemove); // TODO: check for errors
+         IntIntMap neighborAdjList = adjLists.get(vertexNeighbor);
+
+         if(neighborAdjList != null)
+         {
+            neighborAdjList.remove(vertexToRemove);      // TODO: check for errors
+            this.numEdges--;
+         }
       }
       adjLists.remove(vertexToRemove);
+      this.numVertices--;
+
+      updateDensity();
+      updateCost();
    }
 
    /**

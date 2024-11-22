@@ -63,11 +63,12 @@ object VNSApp extends Logging {
       // TODO: implement a simple objective function that returns the most simple
       // density definition of an undirected simple graph https://en.wikipedia.org/wiki/Dense_graph
       // 2*num_edges / (num_vertices * (num_vertices - 1))
-      var cost = 0
-      val cur = subgraph.getAdjLists.cursor()
-      while (cur.moveNext()) {
-        cost += cur.value().size()
-      }
+      val cost = subgraph.getDensity()
+
+      //      val cur = subgraph.getAdjLists.cursor()
+      //      while (cur.moveNext()) {
+      //        cost += cur.value().size()
+      //      }
 
       cost
     }
