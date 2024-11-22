@@ -1,8 +1,12 @@
 package br.ufmg.cs.systems.fractal.optimization;
 
+import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
+import com.koloboke.collect.map.IntObjCursor;
 import com.koloboke.collect.map.IntObjMap;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
+import com.koloboke.collect.set.IntSet;
+import com.koloboke.collect.set.hash.HashIntSets;
 
 public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
@@ -13,35 +17,65 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
       int initialCost = subgraph.cost();
       IntObjMap<IntIntMap> adjLists = subgraph.getAdjLists();
 
-      int[] subgraphVerticesKeys = new int[adjLists.size()];
-      int index = 0;
-      for(IntObjMap.Entry<Integer, IntIntMap> adjList : adjLists.entrySet())
-      {
-         subgraphVerticesKeys[index++] = adjList.getKey();
-      }
+      // conjunto de vizinhancxa do subgrafo
+      IntSet subgraphNeighborhood = HashIntSets.newMutableSet();
 
-      for(int vertex : subgraphVerticesKeys)
-      {
+      IntObjCursor<IntIntMap> cur = adjLists.cursor();
+      while (cur.moveNext()) {
+         int vertex = cur.key();
          IntArrayListView vertexNeighborhood = subgraph.neighborhoodVertices(vertex);
 
-         int[] neighborsKeys = new int[vertexNeighborhood.size()];
-         for(int i = 0; i < vertexNeighborhood.size(); i++)
-         {
-            neighborsKeys[i] = vertexNeighborhood.get(i);
-         }
-
-         for(int neighbor : neighborsKeys)
-         {
-            if (!adjLists.containsKey(neighbor))
-            {
-               subgraph.addVertex((neighbor));
-               if(subgraph.cost() > initialCost)
-                  return true;
-               else
-                  subgraph.removeVertex(neighbor);
-            }
+         for (int i = 0; i < vertexNeighborhood.size(); ++i) {
+            int v = vertexNeighborhood.get(i);
+            subgraphNeighborhood.add(v);
          }
       }
+
+      IntCursor ncur = subgraphNeighborhood.cursor();
+      while (cur.moveNext()) {
+         int neighbor = ncur.elem();
+         if (!adjLists.containsKey(neighbor))
+         {
+            subgraph.addVertex((neighbor));
+            if(subgraph.cost() > initialCost)
+               return true;
+            else
+               subgraph.removeVertex(neighbor);
+         }
+      }
+
+
+
+
+      //int[] subgraphVerticesKeys = new int[adjLists.size()];
+      //int index = 0;
+      //for(IntObjMap.Entry<Integer, IntIntMap> adjList : adjLists.entrySet())
+      //{
+      //   subgraphVerticesKeys[index++] = adjList.getKey();
+      //}
+
+      //for(int vertex : subgraphVerticesKeys)
+      //{
+      //   IntArrayListView vertexNeighborhood = subgraph.neighborhoodVertices(vertex);
+
+      //   int[] neighborsKeys = new int[vertexNeighborhood.size()];
+      //   for(int i = 0; i < vertexNeighborhood.size(); i++)
+      //   {
+      //      neighborsKeys[i] = vertexNeighborhood.get(i);
+      //   }
+
+      //   for(int neighbor : neighborsKeys)
+      //   {
+      //      if (!adjLists.containsKey(neighbor))
+      //      {
+      //         subgraph.addVertex((neighbor));
+      //         if(subgraph.cost() > initialCost)
+      //            return true;
+      //         else
+      //            subgraph.removeVertex(neighbor);
+      //      }
+      //   }
+      //}
       return false;
 
 // Trying to iterate directly through adjLists and vertexNeighborhood returns error

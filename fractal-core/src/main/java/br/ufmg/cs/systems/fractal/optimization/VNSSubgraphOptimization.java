@@ -24,12 +24,12 @@ public class VNSSubgraphOptimization implements Logging {
       SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
 
       boolean improvement = sneighborhood.firstImproving(subgraph);
-      //if (improvement) {
-      //   logApp(String.format("[%d] subgraph=%s", id, subgraph));
-      //   while (sneighborhood.firstImproving(subgraph)) {
-      //      logApp(String.format("[%d] subgraph=%s", id, subgraph));
-      //   }
-      //}
+      if (improvement) {
+         //logApp(String.format("[%d] subgraph=%s", id, subgraph));
+         while (sneighborhood.firstImproving(subgraph)) {
+            //logApp(String.format("[%d] subgraph=%s", id, subgraph));
+         }
+      }
 
       return improvement;
    }
