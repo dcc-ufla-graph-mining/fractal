@@ -10,21 +10,21 @@ import org.apache.spark.{SparkConf, SparkContext}
 import scala.jdk.FunctionConverters._
 
 case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
-                           var cost: Int)
+                           var cost: Double)
 
-class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgraph => Int)
+class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgraph => Double)
   extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] with Logging {
 
   override def reduce(sc1: SubgraphAndCost,
                       sc2: SubgraphAndCost): Unit = {
-    if (sc1.cost < sc2.cost) { // keep best in first argument
+    if (sc1.cost < sc2.cost || (sc1.cost == sc2.cost && sc1.subgraph.getNumVertices < sc2.subgraph.getNumVertices)) { // keep best in first argument
       sc1.subgraph = sc2.subgraph
       sc1.cost = sc2.cost
     }
   }
 
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
-    val javaObjectiveFunction = objectiveFunction.asJavaToIntFunction
+    val javaObjectiveFunction = objectiveFunction.asJavaToDoubleFunction
     val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, javaObjectiveFunction)
     val neighborhoodStructures = Array(
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
@@ -32,7 +32,6 @@ class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgrap
     val vnsOpt = new VNSSubgraphOptimization()
     val improvement = vnsOpt.run(subgraph, neighborhoodStructures)
 
-    logApp(s"solution=${subgraph} improvement=${improvement}")
     val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
     map(0L, subgraphAndCost)
   }
@@ -58,25 +57,30 @@ object VNSApp extends Logging {
 
     val subgraphs = fgraph.inducedSubgraphsSamplePO(numVertices, fraction, seed)
 
-    val objectiveFunction = (subgraph: VertexInducedOptimizationSubgraph) => {
+    val subgraphDensity1 = (subgraph: VertexInducedOptimizationSubgraph) => {
       // user-defined objective function
       val numEdges = subgraph.getNumEdges
       val subgraphNumVertices = subgraph.getNumVertices
 
-      var cost = 0
+      var cost = 0.0
       // Avoid division by zero
-      if (subgraphNumVertices >= 2)
-        cost = (100 * ( (2 * numEdges).toDouble) / (subgraphNumVertices * (subgraphNumVertices - 1) ) ).toInt
+      if (subgraphNumVertices > 2)
+        cost = ( (2 * numEdges).toDouble) / (subgraphNumVertices * (subgraphNumVertices - 1) )
 
       cost
     }
 
+    val subgraphDensity2 = (subgraph: VertexInducedOptimizationSubgraph) => {
+      // TODO: implement subgraph modularity density
+      0
+    }
 
-    val aggregation = new LocalSearchAggregation(objectiveFunction)
+
+    val aggregation = new LocalSearchAggregation(subgraphDensity1)
 
     val bestSubgraph = subgraphs.aggregationLongObj(aggregation).collect().head._2
 
-    logApp(s"BestSubgraph=${bestSubgraph.subgraph} BestCost=${bestSubgraph.cost}")
+    logApp(f"BestSubgraph=${bestSubgraph.subgraph}")
 
     // environment cleaning
     fc.stop()

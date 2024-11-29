@@ -15,6 +15,7 @@ import com.koloboke.function.IntIntConsumer;
 import com.koloboke.function.IntObjConsumer;
 
 import java.io.*;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 
 public class VertexInducedOptimizationSubgraph implements Externalizable {
@@ -23,9 +24,9 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
 
    private int numVertices;
    private int numEdges;
-   private int cost;
+   private double cost;
 
-   transient private ToIntFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
+   transient private ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
 
    // graph from which this subgraph is part of
    private transient MainGraph underlyingGraph;
@@ -49,7 +50,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     * @param subgraph
     */
    public VertexInducedOptimizationSubgraph(VertexInducedSubgraph subgraph,
-                                            ToIntFunction<VertexInducedOptimizationSubgraph> objectiveFunction) {
+                                            ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction) {
       this.objectiveFunction = objectiveFunction;
       this.underlyingGraph = subgraph.getMainGraph();
       this.adjLists = HashIntObjMaps.newMutableMap();
@@ -94,7 +95,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
 
    }
 
-   public int cost() {
+   public double cost() {
       return cost;
    }
 
@@ -132,7 +133,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    }
 
    private void updateCost() {
-      this.cost = objectiveFunction.applyAsInt(this);
+      this.cost = objectiveFunction.applyAsDouble(this);
    }
 
    /**
@@ -204,17 +205,21 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    @Override
    public String toString() {
       StringBuffer sb = new StringBuffer();
-      sb.append("vsub(adjlists=");
+      sb.append("vsub(nvertices=");
+      sb.append(numVertices);
+      sb.append(",nedges=");
+      sb.append(numEdges);
+      sb.append(",adjlists=");
       sb.append(adjLists.toString().replaceAll(" ", ""));
       sb.append(",cost=");
-      sb.append(cost);
+      sb.append(String.format("%.3f", cost));
       sb.append(")");
       return sb.toString();
    }
 
    @Override
    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-      objectOutput.writeInt(cost);
+      objectOutput.writeDouble(cost);
       objectOutput.writeInt(adjLists.size());
       writerExternalConsumer.setObjectOutput(objectOutput);
       adjLists.forEach(writerExternalConsumer);
@@ -222,13 +227,16 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
 
    @Override
    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-      this.cost = objectInput.readInt();
-      int numVertices = objectInput.readInt();
+      this.cost = objectInput.readDouble();
+      numVertices = objectInput.readInt();
       this.adjLists = HashIntObjMaps.newMutableMap(numVertices);
+
+      numEdges = 0;
 
       for (int i = 0; i < numVertices; ++i) {
          int vertex = objectInput.readInt();
          int numNeighbors = objectInput.readInt();
+         numEdges += numNeighbors;
          IntIntMap adjList = HashIntIntMaps.newMutableMap(numNeighbors);
          for (int j = 0; j < numNeighbors; ++j) {
             int neighbor = objectInput.readInt();
@@ -237,6 +245,8 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          }
          adjLists.put(vertex, adjList);
       }
+
+      numEdges = numEdges / 2;
    }
 
    private class WriteExternalConsumer implements IntObjConsumer<IntIntMap> {

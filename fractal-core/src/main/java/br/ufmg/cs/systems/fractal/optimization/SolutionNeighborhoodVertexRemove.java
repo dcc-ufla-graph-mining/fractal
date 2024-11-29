@@ -9,6 +9,8 @@ import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
    private IntSet nonArticulationVertices = HashIntSets.newMutableSet();  // Set containing the non articulation vertices of the subgraph
@@ -74,7 +76,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
    @Override
    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
-      int initialCost = subgraph.cost();        // Initial cost of the subgraph
+      double initialCost = subgraph.cost();        // Initial cost of the subgraph
       this.adjLists = subgraph.getAdjLists();   // Adjacency lists of the subgraph vertices
 
       if(adjLists == null || adjLists.isEmpty())
@@ -97,5 +99,16 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          }
       }
       return false;
+   }
+
+   @Override
+   public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
+      ThreadLocalRandom.current().nextInt(0, 10);
+      // TODO: jump to random neighbor (remove a random vertex)
+   }
+
+   @Override
+   public String toString() {
+      return "VertexRemoveNeighborhood";
    }
 }

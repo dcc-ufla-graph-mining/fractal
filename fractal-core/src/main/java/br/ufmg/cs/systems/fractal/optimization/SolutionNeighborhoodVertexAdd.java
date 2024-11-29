@@ -12,7 +12,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
    @Override
    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
-      int initialCost = subgraph.cost();
+      double initialCost = subgraph.cost();
       // Subgraph adjacency lists
       IntObjMap<IntIntMap> adjLists = subgraph.getAdjLists();
 
@@ -48,5 +48,15 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
          }
       }
       return false;
+   }
+
+   @Override
+   public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
+      // TODO: jump to random neighbor (add a random vertex)
+   }
+
+   @Override
+   public String toString() {
+      return "VertexAddNeighborhood";
    }
 }

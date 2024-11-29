@@ -8,4 +8,6 @@ public interface SolutionNeighborhood {
     * @return
     */
    boolean firstImproving(VertexInducedOptimizationSubgraph subgraph);
+
+   void randomShake(VertexInducedOptimizationSubgraph subgraph);
 }
