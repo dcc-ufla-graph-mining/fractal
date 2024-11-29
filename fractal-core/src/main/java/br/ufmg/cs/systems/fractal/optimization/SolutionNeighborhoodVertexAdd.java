@@ -12,14 +12,17 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
    @Override
    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
-      // TODO: explore neighborhood of *subgraph* and once we find the first
-      // improvement, make sure this improving version is in *neighbor*
       int initialCost = subgraph.cost();
+      // Subgraph adjacency lists
       IntObjMap<IntIntMap> adjLists = subgraph.getAdjLists();
 
-      // conjunto de vizinhancxa do subgrafo
+      if(adjLists == null || adjLists.isEmpty())
+         return false;
+
+      // Set of subgraph neighborhoods
       IntSet subgraphNeighborhood = HashIntSets.newMutableSet();
 
+      // Getting vertex id's from the subgraph's neighborhood
       IntObjCursor<IntIntMap> cur = adjLists.cursor();
       while (cur.moveNext()) {
          int vertex = cur.key();
@@ -31,8 +34,9 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
          }
       }
 
+      // Adding vertices from the subgraph's neighborhood to try to improve the cost
       IntCursor ncur = subgraphNeighborhood.cursor();
-      while (cur.moveNext()) {
+      while (ncur.moveNext()) {
          int neighbor = ncur.elem();
          if (!adjLists.containsKey(neighbor))
          {
@@ -43,59 +47,6 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                subgraph.removeVertex(neighbor);
          }
       }
-
-
-
-
-      //int[] subgraphVerticesKeys = new int[adjLists.size()];
-      //int index = 0;
-      //for(IntObjMap.Entry<Integer, IntIntMap> adjList : adjLists.entrySet())
-      //{
-      //   subgraphVerticesKeys[index++] = adjList.getKey();
-      //}
-
-      //for(int vertex : subgraphVerticesKeys)
-      //{
-      //   IntArrayListView vertexNeighborhood = subgraph.neighborhoodVertices(vertex);
-
-      //   int[] neighborsKeys = new int[vertexNeighborhood.size()];
-      //   for(int i = 0; i < vertexNeighborhood.size(); i++)
-      //   {
-      //      neighborsKeys[i] = vertexNeighborhood.get(i);
-      //   }
-
-      //   for(int neighbor : neighborsKeys)
-      //   {
-      //      if (!adjLists.containsKey(neighbor))
-      //      {
-      //         subgraph.addVertex((neighbor));
-      //         if(subgraph.cost() > initialCost)
-      //            return true;
-      //         else
-      //            subgraph.removeVertex(neighbor);
-      //      }
-      //   }
-      //}
       return false;
-
-// Trying to iterate directly through adjLists and vertexNeighborhood returns error
-// Exception in thread "main" java.util.NoSuchElementException: head of empty array
-//
-//      for(IntObjMap.Entry<Integer, IntIntMap> adjList : adjLists.entrySet()) {
-//         int vertex = adjList.getKey();
-//         IntArrayListView vertexNeighborhood = subgraph.neighborhoodVertices(vertex);
-//
-//         for (int i = 0; i < vertexNeighborhood.size(); i++) {
-//            int neighbor = vertexNeighborhood.get(i);
-//            if (!adjLists.containsKey(neighbor))
-//            {
-//               subgraph.addVertex((neighbor));
-//               if(subgraph.cost() > initialCost)
-//                  return true;
-//               else
-//                  subgraph.removeVertex(neighbor);
-//            }
-//         }
-//      }
    }
 }

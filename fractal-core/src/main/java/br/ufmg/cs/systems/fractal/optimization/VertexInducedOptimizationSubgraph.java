@@ -23,7 +23,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
 
    private int numVertices;
    private int numEdges;
-   private int density;
    private int cost;
 
    transient private ToIntFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
@@ -78,7 +77,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          adjLists.get(dstVertex).put(srcVertex, edge);
       }
 
-      updateDensity();
       updateCost();
    }
 
@@ -100,7 +98,9 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       return cost;
    }
 
-   public int getDensity() { return density; }
+   public int getNumVertices() { return numVertices; }
+
+   public int getNumEdges() { return numEdges; }
 
    private int getVertexLabel(int vertex) {
       return underlyingGraph.firstVertexLabel(vertex);
@@ -131,19 +131,12 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       return adjLists;
    }
 
-   private void updateCost()
-   {
+   private void updateCost() {
       this.cost = objectiveFunction.applyAsInt(this);
-   }
-
-   private void updateDensity()
-   {
-      this.density = 100 * (2 * (numEdges)) / (numVertices * (numVertices - 1));
    }
 
    /**
     * Adds a new vertex to this subgraph. Assumes that adding the vertex does not disconnect the subgraph.
-    * TODO: update cost of this subgraph
     * @param vertexToAdd
     */
    public void addVertex(int vertexToAdd) {
@@ -166,34 +159,30 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          }
       }
 
-      updateDensity();
       updateCost();
    }
 
    /**
-    * TODO: this function must update this subgraph by removing a new vertex
-    * TODO: update cost of this subgraph
-    * at this point we may assume the removed vertex DOES NOT disconnect the
-    * subgraph
+    * Update this subgraph by removing a vertex
+    * This function assumes that the removed vertex DOES NOT disconnect the subgraph
     * @param vertexToRemove
     */
    public void removeVertex(int vertexToRemove) {
       accessVertexNeighborhood(vertexToRemove, reusableVertexNeighbors, reusableEdgeNeighbors);
 
-      for(int i = 0; i < reusableVertexNeighbors.size(); i++){
+      for(int i = 0; i < reusableVertexNeighbors.size(); i++) {
          int vertexNeighbor = reusableVertexNeighbors.get(i);
          IntIntMap neighborAdjList = adjLists.get(vertexNeighbor);
 
          if(neighborAdjList != null)
          {
-            neighborAdjList.remove(vertexToRemove);      // TODO: check for errors
+            neighborAdjList.remove(vertexToRemove);
             this.numEdges--;
          }
       }
       adjLists.remove(vertexToRemove);
       this.numVertices--;
 
-      updateDensity();
       updateCost();
    }
 

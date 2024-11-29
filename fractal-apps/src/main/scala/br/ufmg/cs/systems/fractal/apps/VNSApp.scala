@@ -60,15 +60,13 @@ object VNSApp extends Logging {
 
     val objectiveFunction = (subgraph: VertexInducedOptimizationSubgraph) => {
       // user-defined objective function
-      // TODO: implement a simple objective function that returns the most simple
-      // density definition of an undirected simple graph https://en.wikipedia.org/wiki/Dense_graph
-      // 2*num_edges / (num_vertices * (num_vertices - 1))
-      val cost = subgraph.getDensity()
+      val numEdges = subgraph.getNumEdges
+      val subgraphNumVertices = subgraph.getNumVertices
 
-      //      val cur = subgraph.getAdjLists.cursor()
-      //      while (cur.moveNext()) {
-      //        cost += cur.value().size()
-      //      }
+      var cost = 0
+      // Avoid division by zero
+      if (subgraphNumVertices >= 2)
+        cost = (100 * ( (2 * numEdges).toDouble) / (subgraphNumVertices * (subgraphNumVertices - 1) ) ).toInt
 
       cost
     }
