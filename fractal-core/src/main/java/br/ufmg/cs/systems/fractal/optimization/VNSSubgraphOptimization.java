@@ -14,25 +14,29 @@ public class VNSSubgraphOptimization implements Logging {
     * @return
     */
    public boolean run(VertexInducedOptimizationSubgraph subgraph, // initial solution
-                      SolutionNeighborhood[] neighborhoodStructures) {
+                      SolutionNeighborhood[] neighborhoodStructures,
+                      int maxIterations) {
       final int id = nextId.getAndIncrement();
 
       logApp(String.format("initialSolutionId=%d subgraph=%s", id, subgraph));
 
-      // TODO: include below a loop that runs for, at most a number of iterations (stop condition)
-      // TODO: this condition can be passed as argument to this function and represent a maximum number of iterations
-
-      int idx = 0;
+      int numIterations = 0;
       boolean improvement = false;
-      while (idx < neighborhoodStructures.length) {
-         SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
-         sneighborhood.randomShake(subgraph); // TODO: implement this method on each neighborhood
-         if (localSearch(subgraph, sneighborhood, id)) {
-            improvement = true;
-            idx = 0;
-         } else {
-            ++idx;
+
+      // Run VNS for (maxIterations) times
+      while(numIterations <= maxIterations) {
+         int idx = 0;
+         while (idx < neighborhoodStructures.length) {
+            SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
+            sneighborhood.randomShake(subgraph);
+            if (localSearch(subgraph, sneighborhood, id)) {
+               improvement = true;
+               idx = 0;
+            } else {
+               ++idx;
+            }
          }
+         numIterations++;
       }
 
       return improvement;
