@@ -8,19 +8,21 @@ import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
 
-public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
+import java.util.concurrent.ThreadLocalRandom;
 
-   @Override
-   public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
-      double initialCost = subgraph.cost();
-      // Subgraph adjacency lists
-      IntObjMap<IntIntMap> adjLists = subgraph.getAdjLists();
+public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
+   IntObjMap<IntIntMap> adjLists;   // Subgraph adjacency lists
+   IntSet subgraphNeighborhood = HashIntSets.newMutableSet();     // Set of subgraph neighborhoods
+
+   // Get the neighbors in the main graph of the subgraph vertices
+   private void getSubgraphNeighborhood(VertexInducedOptimizationSubgraph subgraph) {
+      adjLists = subgraph.getAdjLists();
 
       if(adjLists == null || adjLists.isEmpty())
-         return false;
+         return;
 
-      // Set of subgraph neighborhoods
-      IntSet subgraphNeighborhood = HashIntSets.newMutableSet();
+      // Clear neighborhood
+      subgraphNeighborhood.clear();
 
       // Getting vertex id's from the subgraph's neighborhood
       IntObjCursor<IntIntMap> cur = adjLists.cursor();
@@ -30,9 +32,16 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
          for (int i = 0; i < vertexNeighborhood.size(); ++i) {
             int v = vertexNeighborhood.get(i);
-            subgraphNeighborhood.add(v);
+            subgraphNeighborhood.add(v);  // Add vertex (v) to the subgraph neighborhood
          }
       }
+   }
+
+   @Override
+   public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
+      double initialCost = subgraph.cost();
+
+      getSubgraphNeighborhood(subgraph);
 
       // Adding vertices from the subgraph's neighborhood to try to improve the cost
       IntCursor ncur = subgraphNeighborhood.cursor();
@@ -52,7 +61,30 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
    @Override
    public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
-      // TODO: jump to random neighbor (add a random vertex)
+      subgraphNeighborhood.clear();
+      getSubgraphNeighborhood(subgraph);
+
+      if(subgraphNeighborhood.isEmpty())
+         return;
+
+      // Generate a new random vertex until it is not in the subgraph
+      boolean vertexAdded = false;
+      while(!vertexAdded) {
+         int numVertices = subgraphNeighborhood.size();
+         int randomVertexIndice = ThreadLocalRandom.current().nextInt(0, numVertices);
+
+         IntCursor cur = subgraphNeighborhood.cursor();
+         for (int i = 0; i < randomVertexIndice; i++) {
+            cur.moveNext();      // Moves cursor to the random vertex
+         }
+
+         // Checks if the vertex is not in the subgraph
+         int vertex = cur.elem();
+         if(!adjLists.containsKey(vertex)) {
+            subgraph.addVertex(vertex);      // Add the random vertex
+            vertexAdded = true;
+         }
+      }
    }
 
    @Override
