@@ -123,10 +123,21 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       return reusableVertexNeighbors;
    }
 
+   public void neighborhoodVertices(int vertex,
+                                                IntArrayListView reusableVertexNeighbors) {
+      underlyingGraph.neighborhoodVertices(vertex, reusableVertexNeighbors);
+   }
+
    public IntArrayListView neighborhoodEdges(int vertex) {
       underlyingGraph.neighborhoodEdges(vertex, reusableEdgeNeighbors);
       return reusableEdgeNeighbors;
    }
+
+   public void neighborhoodEdges(int vertex,
+                                             IntArrayListView reusableEdgeNeighbors) {
+      underlyingGraph.neighborhoodEdges(vertex, reusableEdgeNeighbors);
+   }
+
 
    public IntObjMap<IntIntMap> getAdjLists() {
       return adjLists;

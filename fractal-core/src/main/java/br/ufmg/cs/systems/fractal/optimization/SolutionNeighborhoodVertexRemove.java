@@ -1,5 +1,6 @@
 package br.ufmg.cs.systems.fractal.optimization;
 
+import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntCursor;
 import com.koloboke.collect.map.IntIntMap;
@@ -14,6 +15,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
    private final IntSet nonArticulationVertices = HashIntSets.newMutableSet();  // Set containing the non articulation vertices of the subgraph
+   private final IntArrayList nonArticulationVerticesArray = new IntArrayList();
    private int time;   // Used in the Tarjan method
    private IntObjMap<IntIntMap> adjLists; // Adjacency list of the subgraph
 
@@ -101,6 +103,12 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          else
             subgraph.addVertex(vertex);
       }
+
+      // TODO: forma de iterar nesse array de forma ordenada
+      nonArticulationVerticesArray.sort();
+
+
+
       return false;
    }
 
@@ -133,6 +141,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 //      int[] nonAPVertices = nonArticulationVertices.toArray(new int[numVertices]);
 //      int randomNumber = ThreadLocalRandom.current().nextInt(0, numVertices);
 //      int vertex = nonAPVertices[randomNumber];
+      //int vertex = nonArticulationVerticesArray.get(randomNumber);
 //
 //      subgraph.removeVertex(vertex);
    }

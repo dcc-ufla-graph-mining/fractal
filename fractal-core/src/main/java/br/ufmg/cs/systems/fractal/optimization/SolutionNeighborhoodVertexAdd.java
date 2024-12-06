@@ -18,6 +18,8 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
    private void getSubgraphNeighborhood(VertexInducedOptimizationSubgraph subgraph) {
       adjLists = subgraph.getAdjLists();
 
+      IntArrayListView vertexNeighborhood = new IntArrayListView();
+
       if(adjLists == null || adjLists.isEmpty())
          return;
 
@@ -28,10 +30,11 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
       IntObjCursor<IntIntMap> cur = adjLists.cursor();
       while (cur.moveNext()) {
          int vertex = cur.key();
-         IntArrayListView vertexNeighborhood = subgraph.neighborhoodVertices(vertex);
+         subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
 
          for (int i = 0; i < vertexNeighborhood.size(); ++i) {
             int v = vertexNeighborhood.get(i);
+            // TODO: incluir o teste de adição de vértices aqui
             subgraphNeighborhood.add(v);  // Add vertex (v) to the subgraph neighborhood
          }
       }
