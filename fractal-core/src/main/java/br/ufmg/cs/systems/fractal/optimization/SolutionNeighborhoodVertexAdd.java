@@ -1,62 +1,64 @@
 package br.ufmg.cs.systems.fractal.optimization;
 
+import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjCursor;
 import com.koloboke.collect.map.IntObjMap;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
-import com.koloboke.collect.set.IntSet;
-import com.koloboke.collect.set.hash.HashIntSets;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
-   IntObjMap<IntIntMap> adjLists;   // Subgraph adjacency lists
-   IntSet subgraphNeighborhood = HashIntSets.newMutableSet();     // Set of subgraph neighborhoods
+   private IntObjMap<IntIntMap> adjLists;   // Subgraph adjacency lists
+   private final IntArrayList subgraphVertices = new IntArrayList();   // List of the vertices of the subgraph
 
-   // Get the neighbors in the main graph of the subgraph vertices
-   private void getSubgraphNeighborhood(VertexInducedOptimizationSubgraph subgraph) {
+   /**
+    * Get the keys of the vertices of the subgraph
+    * Return true if there are any vertices in the subgraph. Return false if adjLists is empty
+     */
+   private boolean getSubgraphVertices(VertexInducedOptimizationSubgraph subgraph) {
       adjLists = subgraph.getAdjLists();
 
-      IntArrayListView vertexNeighborhood = new IntArrayListView();
+      subgraphVertices.clear();
 
       if(adjLists == null || adjLists.isEmpty())
-         return;
+         return false;
 
-      // Clear neighborhood
-      subgraphNeighborhood.clear();
-
-      // Getting vertex id's from the subgraph's neighborhood
       IntObjCursor<IntIntMap> cur = adjLists.cursor();
       while (cur.moveNext()) {
          int vertex = cur.key();
-         subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
-
-         for (int i = 0; i < vertexNeighborhood.size(); ++i) {
-            int v = vertexNeighborhood.get(i);
-            // TODO: incluir o teste de adição de vértices aqui
-            subgraphNeighborhood.add(v);  // Add vertex (v) to the subgraph neighborhood
-         }
+         subgraphVertices.add(vertex);
       }
+
+      return true;
    }
 
    @Override
    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
       double initialCost = subgraph.cost();
 
-      getSubgraphNeighborhood(subgraph);
+      // Get the keys of the vertices of the subgraph
+      if(!getSubgraphVertices(subgraph))
+         return false;
 
-      // Adding vertices from the subgraph's neighborhood to try to improve the cost
-      IntCursor ncur = subgraphNeighborhood.cursor();
-      while (ncur.moveNext()) {
-         int neighbor = ncur.elem();
-         if (!adjLists.containsKey(neighbor))
-         {
-            subgraph.addVertex((neighbor));
-            if(subgraph.cost() > initialCost)
-               return true;
-            else
-               subgraph.removeVertex(neighbor);
+      IntArrayListView vertexNeighborhood = new IntArrayListView();
+
+      // Removing vertices from the subgraph to try to improve the cost
+      for(int i = 0; i < subgraphVertices.size(); i++) {
+         int vertex = subgraphVertices.get(i);
+         subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
+
+         for (int j = 0; j < vertexNeighborhood.size(); ++j) {
+            int neighbor = vertexNeighborhood.get(j);
+            if (!adjLists.containsKey(neighbor))
+            {
+               subgraph.addVertex((neighbor));
+               if(subgraph.cost() > initialCost)
+                  return true;
+               else
+                  subgraph.removeVertex(neighbor);
+            }
          }
       }
       return false;
@@ -64,27 +66,33 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
    @Override
    public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
-      subgraphNeighborhood.clear();
-      getSubgraphNeighborhood(subgraph);
 
-      if(subgraphNeighborhood.isEmpty())
-         return;
+      // Get the keys of the vertices of the subgraph
+      if(!getSubgraphVertices(subgraph))
+        return;
 
       // Generate a new random vertex until it is not in the subgraph
       boolean vertexAdded = false;
       while(!vertexAdded) {
-         int numVertices = subgraphNeighborhood.size();
+
+         // Get a random vertex from the subgraph
+         int numVertices = subgraphVertices.size();
          int randomVertexIndice = ThreadLocalRandom.current().nextInt(0, numVertices);
+         int randomVertex = subgraphVertices.get(randomVertexIndice);
 
-         IntCursor cur = subgraphNeighborhood.cursor();
-         for (int i = 0; i < randomVertexIndice; i++) {
-            cur.moveNext();      // Moves cursor to the random vertex
-         }
+         // Get a random neighbor from the random vertex neighborhood
+         IntArrayListView neighborhood = new IntArrayListView();
+         subgraph.neighborhoodVertices(randomVertex, neighborhood);
+         int numNeighbors = neighborhood.size();
+         if(numNeighbors == 0)
+            return;
+         int randomNeighborIndex = ThreadLocalRandom.current().nextInt(numNeighbors);
+         int neighbor = neighborhood.get(randomNeighborIndex);
 
-         // Checks if the vertex is not in the subgraph
-         int vertex = cur.elem();
-         if(!adjLists.containsKey(vertex)) {
-            subgraph.addVertex(vertex);      // Add the random vertex
+
+         // Checks if the neighbor is not in the subgraph
+         if(!subgraphVertices.contains(neighbor)) {
+            subgraph.addVertex(neighbor);      // Add the random neighbor vertex
             vertexAdded = true;
          }
       }

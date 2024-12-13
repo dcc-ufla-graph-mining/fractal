@@ -6,16 +6,13 @@ import com.koloboke.collect.map.IntIntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjCursor;
 import com.koloboke.collect.map.IntObjMap;
-import com.koloboke.collect.set.IntSet;
-import com.koloboke.collect.set.hash.HashIntSets;
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
-   private final IntSet nonArticulationVertices = HashIntSets.newMutableSet();  // Set containing the non articulation vertices of the subgraph
-   private final IntArrayList nonArticulationVerticesArray = new IntArrayList();
+   private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
    private int time;   // Used in the Tarjan method
    private IntObjMap<IntIntMap> adjLists; // Adjacency list of the subgraph
 
@@ -76,20 +73,34 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       }
    }
 
-   @Override
-   public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
-      double initialCost = subgraph.cost();        // Initial cost of the subgraph
+   /**
+    * Calls tarjan method to get the non-articulation point vertices and sort the array
+    * Return true if there are any non-articulation vertices. Return false otherwise
+    */
+   private boolean getNonArticulationVertices(VertexInducedOptimizationSubgraph subgraph) {
       this.adjLists = subgraph.getAdjLists();      // Adjacency lists of the subgraph vertices
 
       if(adjLists == null || adjLists.isEmpty())
          return false;
 
       nonArticulationVertices.clear();
-      tarjan();                           // Executing Tarjan algorithm to get the non-articulation vertices
-
+      tarjan();      // Executing Tarjan algorithm to get the non-articulation vertices
 
       // Checks if there is no non articulation point vertices
       if(nonArticulationVertices.isEmpty())
+         return false;
+
+      nonArticulationVertices.sort();  // Ordering the array
+
+      return true;
+   }
+
+   @Override
+   public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
+      double initialCost = subgraph.cost();        // Initial cost of the subgraph
+
+      // Get the non-articulation vertices
+      if(!getNonArticulationVertices(subgraph))
          return false;
 
       // Removing non-articulation vertices to try to improve the cost
@@ -104,11 +115,6 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
             subgraph.addVertex(vertex);
       }
 
-      // TODO: forma de iterar nesse array de forma ordenada
-      nonArticulationVerticesArray.sort();
-
-
-
       return false;
    }
 
@@ -116,14 +122,8 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
    public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
       this.adjLists = subgraph.getAdjLists();      // Adjacency lists of the subgraph vertices
 
-      if(adjLists == null || adjLists.isEmpty())
-         return;
-
-      nonArticulationVertices.clear();
-      tarjan();                           // Executing Tarjan algorithm to get the non-articulation vertices
-
-      // Checks if there is no non articulation point vertices
-      if(nonArticulationVertices.isEmpty())
+      // Get the non-articulation vertices
+      if(!getNonArticulationVertices(subgraph))
          return;
 
       int numVertices = nonArticulationVertices.size();
@@ -137,13 +137,6 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
       int vertex = cur.elem();
       subgraph.removeVertex(vertex);   // Remove the random vertex
-      // Another way to do it
-//      int[] nonAPVertices = nonArticulationVertices.toArray(new int[numVertices]);
-//      int randomNumber = ThreadLocalRandom.current().nextInt(0, numVertices);
-//      int vertex = nonAPVertices[randomNumber];
-      //int vertex = nonArticulationVerticesArray.get(randomNumber);
-//
-//      subgraph.removeVertex(vertex);
    }
 
    @Override
