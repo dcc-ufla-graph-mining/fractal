@@ -89,10 +89,15 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    }
 
    /**
-    * Make a copy into an existing optimization subgraph TODO
+    * Make a copy into an existing optimization subgraph
     */
    public void copyTo(VertexInducedOptimizationSubgraph target) {
-
+      target.numVertices = getNumVertices();
+      target.numEdges = getNumEdges();
+      target.cost = this.cost();
+      target.objectiveFunction = this.objectiveFunction;
+      target.underlyingGraph = this.underlyingGraph;
+      target.adjLists = HashIntObjMaps.newMutableMap(this.adjLists); // Still have to check if there is no need to iterate to copy each element from adjLists
    }
 
    public double cost() {
