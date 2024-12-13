@@ -30,8 +30,8 @@ class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgrap
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
 
     val vnsOpt = new VNSSubgraphOptimization()
-    val maxIterations = 10    // Number of times VNS will be executed
-    val improvement = vnsOpt.run(subgraph, neighborhoodStructures, maxIterations)
+    val timeLimit = 100   // Time limit to the VNS execution
+    val improvement = vnsOpt.run(subgraph, neighborhoodStructures, timeLimit)
 
     val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
     map(0L, subgraphAndCost)

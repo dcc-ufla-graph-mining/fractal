@@ -7,36 +7,41 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class VNSSubgraphOptimization implements Logging {
 
    private static final AtomicInteger nextId = new AtomicInteger();
+   private VertexInducedOptimizationSubgraph vnsSubgraph = new VertexInducedOptimizationSubgraph();
 
    /**
     * VNS implementation, return true if some improvement; false otherwise
     * @param subgraph
     * @return
     */
-   public boolean run(VertexInducedOptimizationSubgraph subgraph, // initial solution
+   public boolean run(VertexInducedOptimizationSubgraph subgraph, // Initial solution
                       SolutionNeighborhood[] neighborhoodStructures,
-                      int maxIterations) {
+                      long timeLimit) {
       final int id = nextId.getAndIncrement();
 
       logApp(String.format("initialSolutionId=%d subgraph=%s", id, subgraph));
 
-      int numIterations = 0;
       boolean improvement = false;
+      long initialTime = System.currentTimeMillis();
+      long timeSpend = 0;
 
-      // Run VNS for (maxIterations) times
-      while(numIterations <= maxIterations) {
+      subgraph.copyTo(vnsSubgraph); // Make a copy of the initial solution (subgraph)
+
+      // Runs VNS for a certain time (timeLimit)
+      while(timeSpend < timeLimit) {
          int idx = 0;
          while (idx < neighborhoodStructures.length) {
             SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
-            sneighborhood.randomShake(subgraph);
-            if (localSearch(subgraph, sneighborhood, id)) {
+            sneighborhood.randomShake(vnsSubgraph);
+            if (localSearch(vnsSubgraph, sneighborhood, id)) {
+               vnsSubgraph.copyTo(subgraph);    // Copies the improved subgraph to the solution
                improvement = true;
                idx = 0;
             } else {
                ++idx;
             }
          }
-         numIterations++;
+         timeSpend = System.currentTimeMillis() - initialTime;
       }
 
       return improvement;
