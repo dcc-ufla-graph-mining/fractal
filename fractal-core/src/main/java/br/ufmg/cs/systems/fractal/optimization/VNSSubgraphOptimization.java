@@ -27,7 +27,7 @@ public class VNSSubgraphOptimization implements Logging {
 
       subgraph.copyTo(vnsSubgraph); // Make a copy of the initial solution (subgraph)
 
-      // Runs VNS for a certain time (timeLimit)
+      // Runs VNS for a certain time
       while(timeSpend < timeLimit) {
          int idx = 0;
          while (idx < neighborhoodStructures.length) {
@@ -43,6 +43,8 @@ public class VNSSubgraphOptimization implements Logging {
          }
          timeSpend = System.currentTimeMillis() - initialTime;
       }
+
+      logApp(String.format("initialSolutionId=%d subgraph=%s", id, subgraph));
 
       return improvement;
    }

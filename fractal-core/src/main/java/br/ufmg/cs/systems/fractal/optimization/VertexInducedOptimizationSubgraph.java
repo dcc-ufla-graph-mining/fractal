@@ -8,6 +8,7 @@ import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph;
 import br.ufmg.cs.systems.fractal.util.Logging;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.map.IntIntMap;
+import com.koloboke.collect.map.IntObjCursor;
 import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 import com.koloboke.collect.map.hash.HashIntObjMaps;
@@ -225,11 +226,27 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(numVertices);
       sb.append(",nedges=");
       sb.append(numEdges);
-      sb.append(",adjlists=");
-      sb.append(adjLists.toString().replaceAll(" ", ""));
+      //sb.append(adjLists.toString().replaceAll(" ", ""));
+      sb.append(",vertices={").append(getStringVertices()).append("}");H
       sb.append(",cost=");
       sb.append(String.format("%.3f", cost));
       sb.append(")");
+      return sb.toString();
+   }
+
+   /**
+    * @return string representation of the vertices of this subgraph
+    */
+   public String getStringVertices() {
+      StringBuffer sb = new StringBuffer();
+      if(adjLists != null) {
+         IntObjCursor<IntIntMap> cur = adjLists.cursor();
+         cur.moveNext();
+         sb.append(cur.key());
+         while(cur.moveNext()) {
+            sb.append(",").append(cur.key());
+         }
+      }
       return sb.toString();
    }
 

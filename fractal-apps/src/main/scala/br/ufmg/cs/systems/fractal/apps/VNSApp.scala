@@ -30,7 +30,7 @@ class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgrap
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
 
     val vnsOpt = new VNSSubgraphOptimization()
-    val timeLimit = 100   // Time limit to the VNS execution
+    val timeLimit = 10   // Time limit to the VNS execution in milliseconds
     val improvement = vnsOpt.run(subgraph, neighborhoodStructures, timeLimit)
 
     val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
@@ -58,12 +58,12 @@ object VNSApp extends Logging {
 
     val subgraphs = fgraph.inducedSubgraphsSamplePO(numVertices, fraction, seed)
 
+    // user-defined objective function
     val subgraphDensity1 = (subgraph: VertexInducedOptimizationSubgraph) => {
-      // user-defined objective function
       val numEdges = subgraph.getNumEdges
       val subgraphNumVertices = subgraph.getNumVertices
-
       var cost = 0.0
+
       // Avoid division by zero
       if (subgraphNumVertices > 2)
         cost = (2 * numEdges).toDouble / (subgraphNumVertices * (subgraphNumVertices - 1))
@@ -73,7 +73,7 @@ object VNSApp extends Logging {
 
     val subgraphDensity2 = (subgraph: VertexInducedOptimizationSubgraph) => {
       // TODO: implement subgraph modularity density
-      0
+      0.0
     }
 
 
