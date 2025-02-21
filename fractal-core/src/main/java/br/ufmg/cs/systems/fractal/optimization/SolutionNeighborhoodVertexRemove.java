@@ -97,18 +97,17 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
    @Override
    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
-      double initialCost = subgraph.cost();        // Initial cost of the subgraph
-
       // Get the non-articulation vertices
       if(!getNonArticulationVertices(subgraph))
          return false;
+
+      double initialCost = subgraph.cost();        // Initial cost of the subgraph
 
       // Removing non-articulation vertices to try to improve the cost
       IntCursor cur = nonArticulationVertices.cursor();
       while (cur.moveNext()) {
          int vertex = cur.elem();
          subgraph.removeVertex(vertex);
-
          if (subgraph.cost() > initialCost) {
             subgraph.setUpdateString(String.format("-%d", vertex));
             return true;
