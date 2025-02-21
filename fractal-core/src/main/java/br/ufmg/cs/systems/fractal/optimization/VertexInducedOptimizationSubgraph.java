@@ -1,11 +1,9 @@
 package br.ufmg.cs.systems.fractal.optimization;
 
-import akka.event.Logging$;
 import br.ufmg.cs.systems.fractal.graph.MainGraph;
 import br.ufmg.cs.systems.fractal.pattern.Pattern;
 import br.ufmg.cs.systems.fractal.pattern.PatternEdge;
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph;
-import br.ufmg.cs.systems.fractal.util.Logging;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjCursor;
@@ -15,9 +13,11 @@ import com.koloboke.collect.map.hash.HashIntObjMaps;
 import com.koloboke.function.IntIntConsumer;
 import com.koloboke.function.IntObjConsumer;
 
-import java.io.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.function.ToDoubleFunction;
-import java.util.function.ToIntFunction;
 
 public class VertexInducedOptimizationSubgraph implements Externalizable {
 
@@ -28,6 +28,8 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    private double cost;
 
    transient private ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
+
+   transient private String updateString;
 
    // graph from which this subgraph is part of
    private transient MainGraph underlyingGraph;
@@ -83,22 +85,33 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    }
 
    /**
-    * Make a copy given an existing optimization subgraph TODO
-    */
-   public VertexInducedOptimizationSubgraph copy() {
-      return null;
-   }
-
-   /**
     * Make a copy into an existing optimization subgraph
     */
    public void copyTo(VertexInducedOptimizationSubgraph target) {
-      target.numVertices = getNumVertices();
-      target.numEdges = getNumEdges();
-      target.cost = this.cost();
       target.objectiveFunction = this.objectiveFunction;
-      target.underlyingGraph = this.underlyingGraph;
-      target.adjLists = HashIntObjMaps.newMutableMap(this.adjLists); // Still have to check if there is no need to iterate to copy each element from adjLists
+      target.underlyingGraph = this.getUnderlyingGraph();
+      if (target.adjLists == null) {
+         target.adjLists = HashIntObjMaps.newMutableMap(this.getAdjLists().size());
+      }
+
+      target.adjLists.clear();
+
+      target.numVertices = this.getNumVertices();
+      target.numEdges = this.getNumEdges();
+
+      // create adjacency lists for each vertex
+      IntObjCursor<IntIntMap> adjCur = this.adjLists.cursor();
+      while (adjCur.moveNext()) {
+         int vertex = adjCur.key();
+         IntIntMap adjList = HashIntIntMaps.newMutableMap(adjCur.value());
+         target.adjLists.put(vertex, adjList);
+      }
+
+      target.cost = this.cost();
+   }
+
+   public int vertexDegree(int u) {
+      return adjLists.get(u).size();
    }
 
    public double cost() {
@@ -151,6 +164,10 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
 
    private void updateCost() {
       this.cost = objectiveFunction.applyAsDouble(this);
+   }
+
+   public void setUpdateString(String updateString) {
+      this.updateString = updateString;
    }
 
    /**
@@ -227,9 +244,25 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(",nedges=");
       sb.append(numEdges);
       //sb.append(adjLists.toString().replaceAll(" ", ""));
-      sb.append(",vertices={").append(getStringVertices()).append("}");
+      //sb.append(",vertices={").append(getStringVertices()).append("}");
+      //sb.append(",hashcode=").append(this.hashCode());
+      sb.append(",update=").append(this.updateString);
       sb.append(",cost=");
-      sb.append(String.format("%.3f", cost));
+      sb.append(String.format("%f", cost));
+      sb.append(")");
+      return sb.toString();
+   }
+
+   public String toDetailedString() {
+      StringBuffer sb = new StringBuffer();
+      sb.append("vsub(nvertices=");
+      sb.append(numVertices);
+      sb.append(",nedges=");
+      sb.append(numEdges);
+      sb.append(",vertices={").append(getStringVertices()).append("}");
+      sb.append(",update=").append(this.updateString);
+      sb.append(",cost=");
+      sb.append(String.format("%f", cost));
       sb.append(")");
       return sb.toString();
    }
@@ -248,6 +281,10 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          }
       }
       return sb.toString();
+   }
+
+   public MainGraph getUnderlyingGraph() {
+      return underlyingGraph;
    }
 
    @Override
@@ -323,6 +360,23 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
             throw new RuntimeException(e);
          }
       }
+   }
+
+   @Override
+
+   public int hashCode() {
+      final int prime = 59;
+      int result = 43;
+      result = prime * result + ((adjLists == null) ? 0 : adjLists.hashCode());
+      long temp;
+      temp = Double.doubleToLongBits(numVertices);
+      result = prime * result + ((int) (temp ^ (temp >> 32)));
+      temp = Double.doubleToLongBits(numEdges);
+      result = prime * result + ((int) (temp ^ (temp >> 32)));
+      temp = Double.doubleToLongBits(cost);
+      result = prime * result + ((int) (temp ^ (temp >> 32)));
+      return result;
+
    }
 
 }

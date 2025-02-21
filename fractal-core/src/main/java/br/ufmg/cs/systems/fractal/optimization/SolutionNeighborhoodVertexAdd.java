@@ -54,10 +54,12 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             if (!adjLists.containsKey(neighbor))
             {
                subgraph.addVertex((neighbor));
-               if(subgraph.cost() > initialCost)
+               if(subgraph.cost() > initialCost) {
+                  subgraph.setUpdateString(String.format("ADD-%d", neighbor));
                   return true;
-               else
+               } else {
                   subgraph.removeVertex(neighbor);
+               }
             }
          }
       }
@@ -105,12 +107,16 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                int numNeighbors = neighborhood.size();
                for(int j = 0; j < numNeighbors; j++) {
                   int neighbor = neighborhood.get(j);
-                  if(!subgraphVertices.contains(neighbor)){
+                  if (!subgraphVertices.contains(neighbor)) {
+                     // add neighbor into a new set
+                     // TODO
                      subgraph.addVertex(neighbor);
                      return;
                   }
                }
             }
+            // random selection among neighbors in new set
+            // TODO
          }
          ++count;
       }

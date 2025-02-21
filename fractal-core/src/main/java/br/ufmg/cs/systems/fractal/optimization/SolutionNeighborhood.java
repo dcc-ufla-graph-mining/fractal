@@ -1,6 +1,8 @@
 package br.ufmg.cs.systems.fractal.optimization;
 
-public interface SolutionNeighborhood {
+import br.ufmg.cs.systems.fractal.util.Logging;
+
+public interface SolutionNeighborhood extends Logging {
    /**
     * If a first improving is found, make sure it subgraph is modified and
     * returns true. Otherwise, returns false and make sure subgraph remains as is.

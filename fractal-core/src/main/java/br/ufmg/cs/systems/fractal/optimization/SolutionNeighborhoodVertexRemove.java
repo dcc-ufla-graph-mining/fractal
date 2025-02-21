@@ -109,10 +109,12 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          int vertex = cur.elem();
          subgraph.removeVertex(vertex);
 
-         if (subgraph.cost() > initialCost)
+         if (subgraph.cost() > initialCost) {
+            subgraph.setUpdateString(String.format("RM-%d", vertex));
             return true;
-         else
+         } else {
             subgraph.addVertex(vertex);
+         }
       }
 
       return false;

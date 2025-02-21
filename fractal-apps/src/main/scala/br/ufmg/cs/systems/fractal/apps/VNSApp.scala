@@ -2,17 +2,19 @@ package br.ufmg.cs.systems.fractal.apps
 
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
-import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
+import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.jdk.FunctionConverters._
+import java.util.function.ToDoubleFunction
 
 case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
                            var cost: Double)
 
-class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgraph => Double)
+class LocalSearchAggregation
+(objectiveFunction: ToDoubleFunction[VertexInducedOptimizationSubgraph],
+ vnsTimeLimitMs: Long)
   extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] with Logging {
 
   override def reduce(sc1: SubgraphAndCost,
@@ -24,17 +26,54 @@ class LocalSearchAggregation(objectiveFunction: VertexInducedOptimizationSubgrap
   }
 
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
-    val javaObjectiveFunction = objectiveFunction.asJavaToDoubleFunction
-    val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, javaObjectiveFunction)
+    val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction)
     val neighborhoodStructures = Array(
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
 
     val vnsOpt = new VNSSubgraphOptimization()
-    val timeLimit = 10   // Time limit to the VNS execution in milliseconds
-    val improvement = vnsOpt.run(subgraph, neighborhoodStructures, timeLimit)
+    val improvement = vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
 
     val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
     map(0L, subgraphAndCost)
+  }
+}
+
+object DensityMass extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
+   with Serializable {
+
+  def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
+    val numEdges = subgraph.getNumEdges
+    val subgraphNumVertices = subgraph.getNumVertices
+    var cost = 0.0
+
+    // Avoid division by zero
+    if (subgraphNumVertices > 2)
+      cost = (2 * numEdges).toDouble / (subgraphNumVertices * (subgraphNumVertices - 1))
+
+    cost
+  }
+}
+
+object Conductance extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
+   with Serializable {
+
+  def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
+    if (subgraph.getNumVertices == 1) return -1
+    val internalEdges = subgraph.getNumEdges
+    val graph = subgraph.getUnderlyingGraph
+
+    var externalEdges = 0
+    val vcur = subgraph.getAdjLists.keySet().cursor()
+    while (vcur.moveNext()) {
+      val u = vcur.elem()
+      val allEdges = graph.vertexDegree(u)
+      val subgraphEdges = subgraph.vertexDegree(u)
+      externalEdges += (allEdges - subgraphEdges)
+    }
+
+    // 1 minus conductance, to use with maximization instead of minimization
+    1 - (externalEdges / (internalEdges + externalEdges).toDouble)
+
   }
 }
 
@@ -50,7 +89,14 @@ object VNSApp extends Logging {
     val graphPath = args(0) // input graph
     val numVertices = args(1).toInt // number of vertices in the subgraphs
     val fraction = args(2).toDouble // fraction of k-subgraphs to be sampled
-    val seed = args(3).toLong // random seed
+    val seed = System.currentTimeMillis() // random seed
+    val vnsTimeLimitMs = args(4).toLong
+    val objectiveFunction = args(5) match {
+      case "densitymass" => DensityMass
+      case "conductance" => Conductance
+      case _ =>
+          throw new RuntimeException(s"Invalid objective function: ${args(5)}")
+    }
 
     // input graph
     val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
@@ -58,30 +104,11 @@ object VNSApp extends Logging {
 
     val subgraphs = fgraph.inducedSubgraphsSamplePO(numVertices, fraction, seed)
 
-    // user-defined objective function
-    val subgraphDensity1 = (subgraph: VertexInducedOptimizationSubgraph) => {
-      val numEdges = subgraph.getNumEdges
-      val subgraphNumVertices = subgraph.getNumVertices
-      var cost = 0.0
-
-      // Avoid division by zero
-      if (subgraphNumVertices > 2)
-        cost = (2 * numEdges).toDouble / (subgraphNumVertices * (subgraphNumVertices - 1))
-
-      cost
-    }
-
-    val subgraphDensity2 = (subgraph: VertexInducedOptimizationSubgraph) => {
-      // TODO: implement subgraph modularity density
-      0.0
-    }
-
-
-    val aggregation = new LocalSearchAggregation(subgraphDensity1)
+    val aggregation = new LocalSearchAggregation(objectiveFunction, vnsTimeLimitMs)
 
     val bestSubgraph = subgraphs.aggregationLongObj(aggregation).collect().head._2
 
-    logApp(f"BestSubgraph=${bestSubgraph.subgraph}")
+    logApp(f"BestSubgraph=${bestSubgraph.subgraph.toDetailedString}")
 
     // environment cleaning
     fc.stop()
