@@ -19,7 +19,7 @@ public class VNSSubgraphOptimization implements Logging {
                       long timeLimit) {
       final int id = nextId.getAndIncrement();
 
-      logApp(String.format("initialSolutionId=%d subgraph=%s", id, subgraph.toDetailedString()));
+      logApp(String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
       boolean improvement = false;
       long initialTime = System.currentTimeMillis();
@@ -33,6 +33,7 @@ public class VNSSubgraphOptimization implements Logging {
          while (idx < neighborhoodStructures.length && timeSpend < timeLimit) {
             SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
             sneighborhood.randomShake(vnsSubgraph);
+            logApp(String.format("%d %s", id, vnsSubgraph.toShortString()));
             if (localSearch(vnsSubgraph, sneighborhood, id)) {
                vnsSubgraph.copyTo(subgraph);    // Copies the improved subgraph to the solution
                improvement = true;
@@ -45,7 +46,7 @@ public class VNSSubgraphOptimization implements Logging {
          timeSpend = System.currentTimeMillis() - initialTime;
       }
 
-      logApp(String.format("initialSolutionId=%d subgraph=%s", id, subgraph.toDetailedString()));
+      logApp(String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
       return improvement;
    }
@@ -60,11 +61,9 @@ public class VNSSubgraphOptimization implements Logging {
    private boolean localSearch(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood sneighborhood, int id) {
       boolean improvement = sneighborhood.firstImproving(subgraph);
       if (improvement) {
-         logApp(String.format("initialSolutionId=%d neighborhood=%s " +
-                 "improvedSubgraph=%s", id, sneighborhood, subgraph));
+         logApp(String.format("%d %s", id, subgraph.toShortString()));
          while (sneighborhood.firstImproving(subgraph)) {
-            logApp(String.format("initialSolutionId=%d neighborhood=%s " +
-                    "improvedSubgraph=%s", id, sneighborhood, subgraph));
+            logApp(String.format("%d %s", id, subgraph.toShortString()));
          }
       }
       return improvement;

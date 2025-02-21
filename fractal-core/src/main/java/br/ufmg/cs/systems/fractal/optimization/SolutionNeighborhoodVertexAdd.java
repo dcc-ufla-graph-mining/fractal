@@ -55,7 +55,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             {
                subgraph.addVertex((neighbor));
                if(subgraph.cost() > initialCost) {
-                  subgraph.setUpdateString(String.format("ADD-%d", neighbor));
+                  subgraph.setUpdateString(String.format("+%d", neighbor));
                   return true;
                } else {
                   subgraph.removeVertex(neighbor);
@@ -89,14 +89,17 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             // Get a random neighbor from the random vertex neighborhood
             subgraph.neighborhoodVertices(randomVertex, neighborhood);
             int numNeighbors = neighborhood.size();
-            if (numNeighbors == 0)
+            if (numNeighbors == 0) {
+               subgraph.setUpdateString("-");
                return;
+            }
             int randomNeighborIndex = ThreadLocalRandom.current().nextInt(numNeighbors);
             int neighbor = neighborhood.get(randomNeighborIndex);
 
             // Checks if the neighbor is not in the subgraph
             if(!subgraphVertices.contains(neighbor)) {
                subgraph.addVertex(neighbor);      // Add the random neighbor vertex
+               subgraph.setUpdateString(String.format("/+%d", neighbor));
                vertexAdded = true;
             }
          } else {
@@ -111,6 +114,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                      // add neighbor into a new set
                      // TODO
                      subgraph.addVertex(neighbor);
+                     subgraph.setUpdateString(String.format("/+%d", neighbor));
                      return;
                   }
                }

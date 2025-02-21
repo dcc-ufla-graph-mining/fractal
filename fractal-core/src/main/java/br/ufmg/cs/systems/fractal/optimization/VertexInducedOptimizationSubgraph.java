@@ -5,6 +5,7 @@ import br.ufmg.cs.systems.fractal.pattern.Pattern;
 import br.ufmg.cs.systems.fractal.pattern.PatternEdge;
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
+import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjCursor;
 import com.koloboke.collect.map.IntObjMap;
@@ -243,9 +244,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(numVertices);
       sb.append(",nedges=");
       sb.append(numEdges);
-      //sb.append(adjLists.toString().replaceAll(" ", ""));
-      //sb.append(",vertices={").append(getStringVertices()).append("}");
-      //sb.append(",hashcode=").append(this.hashCode());
       sb.append(",update=").append(this.updateString);
       sb.append(",cost=");
       sb.append(String.format("%f", cost));
@@ -260,10 +258,33 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(",nedges=");
       sb.append(numEdges);
       sb.append(",vertices={").append(getStringVertices()).append("}");
-      sb.append(",update=").append(this.updateString);
       sb.append(",cost=");
       sb.append(String.format("%f", cost));
       sb.append(")");
+      return sb.toString();
+   }
+
+   public String toShortString() {
+      StringBuffer sb = new StringBuffer();
+      sb.append(numVertices);
+      sb.append(" ");
+      sb.append(numEdges);
+      sb.append(" ");
+      sb.append(updateString);
+      sb.append(" ");
+      sb.append(cost);
+      return sb.toString();
+   }
+
+   public String toShortStringDetailed() {
+      StringBuffer sb = new StringBuffer();
+      sb.append(numVertices);
+      sb.append(" ");
+      sb.append(numEdges);
+      sb.append(" ");
+      sb.append(getStringVertices());
+      sb.append(" ");
+      sb.append(cost);
       return sb.toString();
    }
 
@@ -272,12 +293,12 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     */
    public String getStringVertices() {
       StringBuffer sb = new StringBuffer();
-      if(adjLists != null) {
-         IntObjCursor<IntIntMap> cur = adjLists.cursor();
+      if(!adjLists.isEmpty()) {
+         IntCursor cur = adjLists.keySet().cursor();
          cur.moveNext();
-         sb.append(cur.key());
+         sb.append(cur.elem());
          while(cur.moveNext()) {
-            sb.append(",").append(cur.key());
+            sb.append(",").append(cur.elem());
          }
       }
       return sb.toString();
@@ -363,7 +384,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    }
 
    @Override
-
    public int hashCode() {
       final int prime = 59;
       int result = 43;
@@ -376,7 +396,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       temp = Double.doubleToLongBits(cost);
       result = prime * result + ((int) (temp ^ (temp >> 32)));
       return result;
-
    }
 
 }

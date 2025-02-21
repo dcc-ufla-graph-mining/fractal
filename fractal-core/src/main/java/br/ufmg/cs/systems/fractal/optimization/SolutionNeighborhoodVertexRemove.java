@@ -110,7 +110,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          subgraph.removeVertex(vertex);
 
          if (subgraph.cost() > initialCost) {
-            subgraph.setUpdateString(String.format("RM-%d", vertex));
+            subgraph.setUpdateString(String.format("-%d", vertex));
             return true;
          } else {
             subgraph.addVertex(vertex);
@@ -139,6 +139,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
       int vertex = cur.elem();
       subgraph.removeVertex(vertex);   // Remove the random vertex
+      subgraph.setUpdateString(String.format("/-%d", vertex));
    }
 
    @Override

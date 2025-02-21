@@ -8,7 +8,7 @@ import org.apache.log4j.{Level, LogManager, Logger}
 trait Logging {
    protected def logName = this.getClass.getSimpleName
 
-   protected def log = Logger.getLogger (logName)
+   protected def log = Logger.getLogger(logName)
 
    /** client functions are called by name in order to avoid unecessary string
     *  building **/

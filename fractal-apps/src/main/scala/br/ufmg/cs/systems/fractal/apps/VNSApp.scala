@@ -89,7 +89,7 @@ object VNSApp extends Logging {
     val graphPath = args(0) // input graph
     val numVertices = args(1).toInt // number of vertices in the subgraphs
     val fraction = args(2).toDouble // fraction of k-subgraphs to be sampled
-    val seed = System.currentTimeMillis() // random seed
+    val seed = -1 // -1 means: start with a random seed
     val vnsTimeLimitMs = args(4).toLong
     val objectiveFunction = args(5) match {
       case "densitymass" => DensityMass
