@@ -19,7 +19,7 @@ public class VNSSubgraphOptimization implements Logging {
                       long timeLimit) {
       final int id = nextId.getAndIncrement();
 
-      logApp(String.format("%d %s", id, subgraph.toShortStringDetailed()));
+      logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
       boolean improvement = false;
       long initialTime = System.currentTimeMillis();
@@ -33,7 +33,7 @@ public class VNSSubgraphOptimization implements Logging {
          while (idx < neighborhoodStructures.length && timeSpend < timeLimit) {
             SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
             sneighborhood.randomShake(vnsSubgraph);
-            logApp(String.format("%d %s", id, vnsSubgraph.toShortString()));
+            logApp(() -> String.format("%d %s", id, vnsSubgraph.toShortString()));
             if (localSearch(vnsSubgraph, sneighborhood, id)) {
                vnsSubgraph.copyTo(subgraph);    // Copies the improved subgraph to the solution
                improvement = true;
@@ -46,7 +46,7 @@ public class VNSSubgraphOptimization implements Logging {
          timeSpend = System.currentTimeMillis() - initialTime;
       }
 
-      logApp(String.format("%d %s", id, subgraph.toShortStringDetailed()));
+      logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
       return improvement;
    }
@@ -61,9 +61,9 @@ public class VNSSubgraphOptimization implements Logging {
    private boolean localSearch(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood sneighborhood, int id) {
       boolean improvement = sneighborhood.firstImproving(subgraph);
       if (improvement) {
-         logApp(String.format("%d %s", id, subgraph.toShortString()));
+         logApp(() -> String.format("%d %s", id, subgraph.toShortString()));
          while (sneighborhood.firstImproving(subgraph)) {
-            logApp(String.format("%d %s", id, subgraph.toShortString()));
+            logApp(() -> String.format("%d %s", id, subgraph.toShortString()));
          }
       }
       return improvement;

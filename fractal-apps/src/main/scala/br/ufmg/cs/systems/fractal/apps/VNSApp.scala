@@ -2,9 +2,11 @@ package br.ufmg.cs.systems.fractal.apps
 
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
+import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
 import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
+import org.apache.spark.SparkContext.jarOfObject
 import org.apache.spark.{SparkConf, SparkContext}
 
 import java.util.function.ToDoubleFunction
@@ -88,8 +90,8 @@ object VNSApp extends Logging {
 
     val graphPath = args(0) // input graph
     val numVertices = args(1).toInt // number of vertices in the subgraphs
-    val fraction = args(2).toDouble // fraction of k-subgraphs to be sampled
-    val seed = -1 // -1 means: start with a random seed
+    val numSamples = args(2).toInt // target number of initial solutions via random walk (no guarantee to be exactly that)
+    val seed = args(3).toInt // -1 means: start with a random seed
     val vnsTimeLimitMs = args(4).toLong
     val objectiveFunction = args(5) match {
       case "densitymass" => DensityMass
@@ -102,13 +104,31 @@ object VNSApp extends Logging {
     val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
        .set("ws_external", false)
 
-    val subgraphs = fgraph.inducedSubgraphsSamplePO(numVertices, fraction, seed)
+    // materialize input graph
+    fgraph.vfractoid.extend(1).aggregationCount
+
+    val startTimeMs = System.currentTimeMillis()
+
+    val numThreads = if (fgraph.numPartitions > numSamples) 1 else fgraph.numPartitions
+    val samplesPerThread = Math.max(numSamples / numThreads, 1)
+    val subgraphs = fgraph
+      .set("samples_per_thread", samplesPerThread)
+      .set("random_walk_seed", seed)
+      .set("num_partitions", numThreads)
+      .vfractoid
+      .extend(numVertices,
+        classOf[RandomWalkEnumerator[VertexInducedSubgraph]])
+
 
     val aggregation = new LocalSearchAggregation(objectiveFunction, vnsTimeLimitMs)
 
-    val bestSubgraph = subgraphs.aggregationLongObj(aggregation).collect().head._2
+    val bestSubgraph = subgraphs.aggregationLongObj(aggregation)
+      .reduceByKey((sc1, sc2) => {aggregation.reduce(sc1, sc2); sc1})
+      .collect().head._2
 
-    logApp(f"BestSubgraph=${bestSubgraph.subgraph.toDetailedString}")
+    val elapsedTimeMs = System.currentTimeMillis() - startTimeMs
+
+    logApp(f"ElapsedTimeMs=${elapsedTimeMs} BestSubgraph=${bestSubgraph.subgraph.toDetailedString}")
 
     // environment cleaning
     fc.stop()

@@ -3,11 +3,11 @@ package br.ufmg.cs.systems.fractal.computation
 import java.io.Serializable
 import java.lang.management.ManagementFactory
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
-
 import akka.actor._
 import br.ufmg.cs.systems.fractal.aggregation._
 import br.ufmg.cs.systems.fractal.conf.{Configuration, SparkConfiguration}
 import br.ufmg.cs.systems.fractal.subgraph._
+import br.ufmg.cs.systems.fractal.util.collection.ObjArrayList
 import br.ufmg.cs.systems.fractal.util.{FractalSparkListener, FractalThreadStats, Logging, ProcessComputeFunc}
 import br.ufmg.cs.systems.fractal.{Fractoid, Primitive}
 import org.apache.spark.SparkContext
@@ -255,63 +255,76 @@ object SparkFromScratchMasterEngineAggregation {
       // we will contruct the pipeline in this var
       var cc = originalContainer
       cc = {
-         def withCustomFuncs(cc: ComputationContainer[S], depth: Int)
-         : ComputationContainer[S] = cc.nextComputationOpt match {
-            case Some(c) =>
-               val ncc = withCustomFuncs(
-                  c.asInstanceOf[ComputationContainer[S]],
-                  depth + 1)
-               cc.primitive match {
-                  case Primitive.E =>
-                     if (depth == 0) {
-                        val extensionFuncFirst = new ExtensionPrimitiveFirst[S]
-                        cc.shallowCopy(
-                           processComputeOpt = Option(extensionFuncFirst),
-                           nextComputationOpt = Option(ncc),
-                           processOpt = None)
-                     } else {
-                        val extensionFuncMiddle = new
-                              ExtensionPrimitiveMiddle[S]
-                        cc.shallowCopy(
-                           processComputeOpt = Option(extensionFuncMiddle),
-                           nextComputationOpt = Option(ncc),
-                           processOpt = None)
-                     }
-                  case Primitive.F =>
-                     val filterFunc = new FilterPrimitive[S]
+         def fixCCLast(cc: ComputationContainer[S], depth: Int): ComputationContainer[S] = {
+            cc.primitive match {
+               case Primitive.E =>
+                  if (depth == 0) {
+                     val extensionFuncFirstLast = new
+                         ExtensionPrimitiveFirstLast[S]
                      cc.shallowCopy(
-                        processComputeOpt = Option(filterFunc),
-                        nextComputationOpt = Option(ncc),
-                        processOpt = None)
-                  case other =>
-                     throw new RuntimeException(s"Unexpected " +
-                        s"primitive: ${other}")
-               }
-
-            case None =>
-               cc.primitive match {
-                  case Primitive.E =>
-                     if (depth == 0) {
-                        val extensionFuncFirstLast = new
-                              ExtensionPrimitiveFirstLast[S]
-                        cc.shallowCopy(
-                           processComputeOpt = Option(extensionFuncFirstLast))
-                     } else {
-                        val extensionFuncLast = new ExtensionPrimitiveLast[S]
-                        cc.shallowCopy(
-                           processComputeOpt = Option(extensionFuncLast))
-                     }
-                  case Primitive.F =>
-                     val filterFuncLast = new FilterPrimitiveLast[S]
+                        processComputeOpt = Option(extensionFuncFirstLast))
+                  } else {
+                     val extensionFuncLast = new ExtensionPrimitiveLast[S]
                      cc.shallowCopy(
-                        processComputeOpt = Option(filterFuncLast))
-                  case other =>
-                     throw new RuntimeException(s"Unexpected " +
-                        s"primitive: ${other}")
-               }
+                        processComputeOpt = Option(extensionFuncLast))
+                  }
+               case Primitive.F =>
+                  val filterFuncLast = new FilterPrimitiveLast[S]
+                  cc.shallowCopy(
+                     processComputeOpt = Option(filterFuncLast))
+               case other =>
+                  throw new RuntimeException(s"Unexpected " +
+                    s"primitive: ${other}")
+            }
          }
 
-         cc = withCustomFuncs(cc, 0)
+         def fixCCNotLast(cc: ComputationContainer[S], ncc: ComputationContainer[S], depth: Int): ComputationContainer[S] = {
+            cc.primitive match {
+               case Primitive.E =>
+                  if (depth == 0) {
+                     val extensionFuncFirst = new ExtensionPrimitiveFirst[S]
+                     cc.shallowCopy(
+                        processComputeOpt = Option(extensionFuncFirst),
+                        nextComputationOpt = Option(ncc),
+                        processOpt = None)
+                  } else {
+                     val extensionFuncMiddle = new
+                         ExtensionPrimitiveMiddle[S]
+                     cc.shallowCopy(
+                        processComputeOpt = Option(extensionFuncMiddle),
+                        nextComputationOpt = Option(ncc),
+                        processOpt = None)
+                  }
+               case Primitive.F =>
+                  val filterFunc = new FilterPrimitive[S]
+                  cc.shallowCopy(
+                     processComputeOpt = Option(filterFunc),
+                     nextComputationOpt = Option(ncc),
+                     processOpt = None)
+               case other =>
+                  throw new RuntimeException(s"Unexpected " +
+                    s"primitive: ${other}")
+            }
+
+         }
+
+         val computations = new ObjArrayList[ComputationContainer[S]]()
+         var currentComputation = cc
+         while (currentComputation != null) {
+            computations.add(currentComputation)
+            currentComputation = currentComputation.nextComputationOpt.getOrElse(null).asInstanceOf[ComputationContainer[S]]
+         }
+
+         var i = computations.size() - 1
+         currentComputation = computations.get(i)
+         currentComputation = fixCCLast(currentComputation, i)
+         i -= 1
+         while (i >= 0) {
+            currentComputation = fixCCNotLast(computations.get(i), currentComputation, i)
+            i -= 1
+         }
+
+         cc = currentComputation
          cc.setDepth(0)
          cc
       }
