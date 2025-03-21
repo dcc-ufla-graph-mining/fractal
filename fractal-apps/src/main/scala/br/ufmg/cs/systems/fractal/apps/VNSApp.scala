@@ -3,7 +3,7 @@ package br.ufmg.cs.systems.fractal.apps
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
 import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
-import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
+import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
 import org.apache.spark.SparkContext.jarOfObject
@@ -28,14 +28,22 @@ class LocalSearchAggregation
   }
 
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
+    logApp(s"NewSubgraph ${internalSubgraph}")
     val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction)
-    val neighborhoodStructures = Array(
+    val neighborhoodStructures = Array(//new SolutionNeighborhoodNeighborhoodAdd,
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
 
     val vnsOpt = new VNSSubgraphOptimization()
-    val improvement = vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
+    try {
+      val improvement = vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
+    } catch {
+      case e: RuntimeException =>
+        logApp(s"EXCEPTION: ${e.getStackTrace().slice(0, 5).mkString(",")}")
+        throw new RuntimeException(e)
+    }
 
     val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
+    logApp(s"Returning ${subgraphAndCost}")
     map(0L, subgraphAndCost)
   }
 }
@@ -124,7 +132,8 @@ object VNSApp extends Logging {
 
     val bestSubgraph = subgraphs.aggregationLongObj(aggregation)
       .reduceByKey((sc1, sc2) => {aggregation.reduce(sc1, sc2); sc1})
-      .collect().head._2
+      .values
+      .collect().head
 
     val elapsedTimeMs = System.currentTimeMillis() - startTimeMs
 
