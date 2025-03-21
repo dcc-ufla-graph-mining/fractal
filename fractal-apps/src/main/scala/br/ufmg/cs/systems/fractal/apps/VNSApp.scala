@@ -28,7 +28,6 @@ class LocalSearchAggregation
   }
 
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
-    logApp(s"NewSubgraph ${internalSubgraph}")
     val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction)
     val neighborhoodStructures = Array(//new SolutionNeighborhoodNeighborhoodAdd,
       new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
@@ -43,7 +42,6 @@ class LocalSearchAggregation
     }
 
     val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
-    logApp(s"Returning ${subgraphAndCost}")
     map(0L, subgraphAndCost)
   }
 }
