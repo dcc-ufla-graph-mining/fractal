@@ -3,7 +3,7 @@ package br.ufmg.cs.systems.fractal.apps
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
 import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
-import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
+import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
 import org.apache.spark.SparkContext.jarOfObject
@@ -30,7 +30,7 @@ class LocalSearchAggregation
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
     val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction)
     val neighborhoodStructures = Array(//new SolutionNeighborhoodNeighborhoodAdd,
-      new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove)
+      new SolutionNeighborhoodVertexAdd, new SolutionNeighborhoodVertexRemove, new SolutionNeighborhoodVertexSwap)
 
     val vnsOpt = new VNSSubgraphOptimization()
     try {
