@@ -3,22 +3,26 @@ package br.ufmg.cs.systems.fractal.optimization;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.IntCursor;
+import com.koloboke.collect.map.IntIntMap;
+import com.koloboke.collect.map.IntObjMap;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
-
+    private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
     private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
     private final IntArrayList subgraphVertices = new IntArrayList();   // List of vertices in the subgraph
 
 
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
+        adjLists = subgraph.getAdjLists();
+
         // Get the subgraph vertices
-        if(!VNSSubgraphOptimization.getSubgraphVertices(subgraph, subgraphVertices))
+        if(!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists))
             return false;
         // Get the non-articulation vertices
-        if(!VNSSubgraphOptimization.getNonArticulationVertices(subgraph, nonArticulationVertices))
+        if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists))
             return false;
 
         double initialCost = subgraph.cost();
@@ -37,7 +41,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
                     subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
                     for (int i = 0; i < vertexNeighborhood.size(); i++) {
                         int neighborToAdd = vertexNeighborhood.get(i);
-                        if (!subgraphVertices.contains(neighborToAdd)) {
+                        if (!adjLists.containsKey(neighborToAdd)) {
                             subgraph.addVertex(neighborToAdd);
                             if (subgraph.cost() > initialCost) {
                                 subgraph.setUpdateString(String.format("-%d +%d", vertexToRemove, neighborToAdd));
@@ -56,11 +60,13 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
 
     @Override
     public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
+        adjLists = subgraph.getAdjLists();
+
         // Get the subgraph vertices
-        if(!VNSSubgraphOptimization.getSubgraphVertices(subgraph, subgraphVertices))
+        if(!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists))
             return;
         // Get the non-articulation vertices
-        if(!VNSSubgraphOptimization.getNonArticulationVertices(subgraph, nonArticulationVertices))
+        if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists))
             return;
 
         // Get a random vertex to remove
@@ -99,7 +105,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             }
 
             // Checks if the neighbor is not in the subgraph and swap the vertices
-            if (!subgraphVertices.contains(randomNeighborToAdd)) {
+            if (!adjLists.containsKey(randomNeighborToAdd)) {
                 subgraph.removeVertex(randomVertexToRemove);    // Remove the random vertex
                 subgraph.addVertex(randomNeighborToAdd);        // Add the other random vertex
                 subgraph.setUpdateString(String.format("/-%d +%d", randomVertexToRemove, randomNeighborToAdd));
@@ -116,7 +122,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
                 subgraph.neighborhoodVertices(vertex, neighborhood);
                 for (int j = 0; j < neighborhood.size(); j++) {
                     int neighbor = neighborhood.get(j);
-                    if (!subgraphVertices.contains(neighbor) && neighbor != randomVertexToRemove) {
+                    if (!adjLists.containsKey(neighbor) && neighbor != randomVertexToRemove) {
                         neighborsNotInSubgraph.add(neighbor);   // add neighbor into a new set
                     }
                 }

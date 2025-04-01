@@ -2,31 +2,39 @@ package br.ufmg.cs.systems.fractal.optimization;
 
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
+import com.koloboke.collect.map.IntIntMap;
+import com.koloboke.collect.map.IntObjMap;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
+    private  IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
     private final IntArrayList subgraphVertices = new IntArrayList();   // List of vertices int the subgraph
-
 
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
-        // Get the keys of the vertices of the subgraph
-        if (!VNSSubgraphOptimization.getSubgraphVertices(subgraph, subgraphVertices))
-            return false;
+        adjLists = subgraph.getAdjLists();
 
+        // Get the keys of the vertices of the subgraph
+        if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
+            System.out.println("ADD FALSE");
+            return false;
+        }
+        System.out.println("ADD TRUE");
         double initialCost = subgraph.cost();
         IntArrayListView vertexNeighborhood = new IntArrayListView();
 
-        // Adding vertices from the subgraph to try to improve the cost
+        // For each subgraph vertex, try to add his neighbors to improve the cost
         for (int i = 0; i < subgraphVertices.size(); i++) {
             int vertex = subgraphVertices.get(i);
             subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
 
-            for (int j = 0; j < vertexNeighborhood.size(); ++j) {
+            for (int j = 0; j < vertexNeighborhood.size(); j++) {
                 int neighbor = vertexNeighborhood.get(j);
-                if (!subgraphVertices.contains(neighbor)) {
+                if (!adjLists.containsKey(neighbor)) {
                     subgraph.addVertex((neighbor));
+
+                    // Verifies if the cost has increased
                     if (subgraph.cost() > initialCost) {
                         subgraph.setUpdateString(String.format("+%d", neighbor));
                         return true;
@@ -41,8 +49,10 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
     @Override
     public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
+        adjLists = subgraph.getAdjLists();
+
         // Get the keys of the vertices of the subgraph
-        if (!VNSSubgraphOptimization.getSubgraphVertices(subgraph, subgraphVertices))
+        if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists))
             return;
 
         int count = 0;  // Variable to count the number of attempts to add a random vertex to prevent loops
@@ -66,8 +76,8 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
             int randomNeighbor = neighborhood.get(randomNeighborIndex);
 
-            // Checks if the randomNeighbor is not in the subgraph
-            if (!subgraphVertices.contains(randomNeighbor)) {
+            // Verifies if the randomNeighbor is not in the subgraph
+            if (!adjLists.containsKey(randomNeighbor)) {
                 subgraph.addVertex(randomNeighbor);      // Add the random randomNeighbor vertex
                 subgraph.setUpdateString(String.format("/+%d", randomNeighbor));
                 vertexAdded = true;
@@ -83,7 +93,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                 subgraph.neighborhoodVertices(vertex, neighborhood);
                 for (int j = 0; j < neighborhood.size(); j++) {
                     int neighbor = neighborhood.get(j);
-                    if (!subgraphVertices.contains(neighbor)) {
+                    if (!adjLists.containsKey(neighbor)) {
                         neighborsNotInSubgraph.add(neighbor);     // add neighbor into a new set
                     }
                 }

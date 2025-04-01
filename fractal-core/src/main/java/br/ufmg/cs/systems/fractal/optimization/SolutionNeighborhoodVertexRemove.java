@@ -2,16 +2,21 @@ package br.ufmg.cs.systems.fractal.optimization;
 
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import com.koloboke.collect.IntCursor;
+import com.koloboke.collect.map.IntIntMap;
+import com.koloboke.collect.map.IntObjMap;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
-
+   private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
    private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
 
    @Override
    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
+      adjLists = subgraph.getAdjLists();
+
       // Get the non-articulation vertices
-      if(!VNSSubgraphOptimization.getNonArticulationVertices(subgraph, nonArticulationVertices))
+      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists))
          return false;
 
       double initialCost = subgraph.cost();        // Initial cost of the subgraph
@@ -21,6 +26,8 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       while (cur.moveNext()) {
          int vertex = cur.elem();
          subgraph.removeVertex(vertex);
+
+         // Checks if the cost has increased
          if (subgraph.cost() > initialCost) {
             subgraph.setUpdateString(String.format("-%d", vertex));
             return true;
@@ -34,15 +41,17 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
    @Override
    public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
+      adjLists = subgraph.getAdjLists();
 
       // Get the non-articulation vertices
-      if(!VNSSubgraphOptimization.getNonArticulationVertices(subgraph, nonArticulationVertices))
+      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists))
          return;
 
+      // Generate a random vertex index
       int numVertices = nonArticulationVertices.size();
-      int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numVertices - 1);
+      int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numVertices);
 
-      // Get a random vertex to remove
+      // Get the random vertex to remove
       IntCursor cur = nonArticulationVertices.cursor();
       for(int i = 0; i <= randomVertexIndex; i++)
       {

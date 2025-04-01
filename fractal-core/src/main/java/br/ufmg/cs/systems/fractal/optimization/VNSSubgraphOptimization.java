@@ -1,12 +1,15 @@
 package br.ufmg.cs.systems.fractal.optimization;
 
 import br.ufmg.cs.systems.fractal.util.Logging;
+import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.map.IntIntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjCursor;
 import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
+import com.koloboke.collect.set.IntSet;
+import com.koloboke.collect.set.hash.HashIntSets;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -14,7 +17,10 @@ public class VNSSubgraphOptimization implements Logging {
 
    private static final AtomicInteger nextId = new AtomicInteger();
    private VertexInducedOptimizationSubgraph vnsSubgraph = new VertexInducedOptimizationSubgraph();
-   private static int time;   // Used in the Tarjan method
+   long initialTimeMs;
+   private long elapsedRunTimeMs;   // Elapsed time in the current run
+   long timeLimitMs;                // Time limit to execute the run
+   private static int timeTarjan;   // Used in the Tarjan method
 
    /**
     * VNS implementation
@@ -29,15 +35,16 @@ public class VNSSubgraphOptimization implements Logging {
       logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
       boolean improvement = false;
-      long initialTime = System.currentTimeMillis();
-      long timeSpendMs = 0;
+      this.initialTimeMs = System.currentTimeMillis();
+      this.elapsedRunTimeMs = 0;
+      this.timeLimitMs = timeLimitMs;
 
       subgraph.copyTo(vnsSubgraph); // Make a copy of the initial solution (subgraph)
 
       // Runs VNS for a certain time
-      while(timeSpendMs < timeLimitMs) {
+      while(elapsedRunTimeMs < timeLimitMs) {
          int idx = 0;
-         while (idx < neighborhoodStructures.length && timeSpendMs < timeLimitMs) {
+         while (idx < neighborhoodStructures.length && elapsedRunTimeMs < timeLimitMs) {
             SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
             sneighborhood.randomShake(vnsSubgraph);
             logApp(() -> String.format("%d %s", id, vnsSubgraph.toShortString()));
@@ -48,9 +55,9 @@ public class VNSSubgraphOptimization implements Logging {
             } else {
                ++idx;
             }
-            timeSpendMs = System.currentTimeMillis() - initialTime;
+            elapsedRunTimeMs = System.currentTimeMillis() - initialTimeMs;
          }
-         timeSpendMs = System.currentTimeMillis() - initialTime;
+         elapsedRunTimeMs = System.currentTimeMillis() - initialTimeMs;
       }
 
       logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
@@ -66,23 +73,25 @@ public class VNSSubgraphOptimization implements Logging {
     * @return true if any improvement occurred, or false otherwise
     */
    private boolean localSearch(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood sneighborhood, int id) {
-      boolean improvement = sneighborhood.firstImproving(subgraph);
-      if (improvement) {
-         logApp(() -> String.format("%d %s", id, subgraph.toShortString()));
-         // while (sneighborhood.firstImproving(subgraph) && timeSpendMs < timeLimitMs)
-         while (sneighborhood.firstImproving(subgraph)) {
+      boolean improvement, hasImproved = false;
+      do {
+         improvement = sneighborhood.firstImproving(subgraph);
+         if(improvement) {
             logApp(() -> String.format("%d %s", id, subgraph.toShortString()));
+            hasImproved = true;  // Track if at least one improvement happened
          }
-      }
-      return improvement;
+         elapsedRunTimeMs = System.currentTimeMillis() - initialTimeMs;
+      } while(improvement && elapsedRunTimeMs < timeLimitMs);
+
+      return hasImproved;
    }
 
    // DFS to run the Tarjan method
    private static int dfsTarjan(int u, int p, IntIntMap low, IntIntMap disc, IntObjMap<IntIntMap> adjLists, IntArrayList nonArticulationVertices) {
-      int children = 0;                // Count of children in DFS tree
-      low.put(u, time);                // Initialize discovery low value
-      disc.put(u, time);               // Initialize discovery time
-      time++;                          // Increasing dfs time
+      int children = 0;                      // Count of children in DFS tree
+      low.put(u, timeTarjan);                // Initialize discovery low value
+      disc.put(u, timeTarjan);               // Initialize discovery time
+      timeTarjan++;                          // Increasing dfs time
       boolean isArticulation = false;  // Stores whether a vertex is an articulation point
 
       // Iterating through the adjacency list of vertex (u)
@@ -121,7 +130,7 @@ public class VNSSubgraphOptimization implements Logging {
 
       // Initializing auxiliary structures
       low = disc = HashIntIntMaps.newMutableMap();
-      time = 0;
+      timeTarjan = 0;
 
       // Executing recursive Tarjan
       int u;
@@ -137,13 +146,11 @@ public class VNSSubgraphOptimization implements Logging {
 
    /**
     * Calls tarjan method to get the non-articulation point vertices and sort the array
-    * @return true if there are any non-articulation vertice, or false otherwise
-    * @param subgraph
-    * @param nonArticulationVertices
+    * @param nonArticulationVertices array to store the non articulation vertices
+    * @param adjLists adjacency lists of the subgraph vertices
+    * @return true if there are any non-articulation vertices, or false otherwise
     */
-   public static boolean getNonArticulationVertices(VertexInducedOptimizationSubgraph subgraph, IntArrayList nonArticulationVertices) {
-      IntObjMap<IntIntMap> adjLists = subgraph.getAdjLists();      // Adjacency lists of the subgraph vertices
-
+   public static boolean getNonArticulationVertices(IntArrayList nonArticulationVertices, IntObjMap<IntIntMap> adjLists) {
       if(adjLists == null || adjLists.isEmpty())
          return false;
 
@@ -160,14 +167,12 @@ public class VNSSubgraphOptimization implements Logging {
    }
 
    /**
-    * Get the keys of the vertices of the subgraph
+    * Get the keys of all vertices of the subgraph
+    * @param subgraphVertices array to store the keys of the subgraph vertices in ID order
+    * @param adjLists adjacency lists of the subgraph vertices
     * @return true if there are any vertices in the subgraph, or false otherwise
-    * @param subgraph
-    * @param subgraphVertices
     */
-   public static boolean getSubgraphVertices(VertexInducedOptimizationSubgraph subgraph, IntArrayList subgraphVertices) {
-      IntObjMap<IntIntMap> adjLists = subgraph.getAdjLists();  // Adjacency lists of the subgraph vertices
-
+   public static boolean getSubgraphVertices(IntArrayList subgraphVertices, IntObjMap<IntIntMap> adjLists) {
       if(adjLists == null || adjLists.isEmpty())
          return false;
 
@@ -180,6 +185,84 @@ public class VNSSubgraphOptimization implements Logging {
       }
 
       return true;
+   }
+
+
+   /**
+    * Get the keys of all neighbors of the vertices of the subgraph
+    * @param subgraph
+    * @param subgraphNeighborhood array to store the keys of the neighbors of the subgraph vertices
+    * @param subgraphVertices array that contains all the keys of the subgraph vertices
+    */
+   public static void getSubgraphNeighbors(VertexInducedOptimizationSubgraph subgraph, IntArrayList subgraphNeighborhood, IntArrayList subgraphVertices) {
+      if(subgraphVertices == null || subgraphVertices.isEmpty())
+         return;
+
+      subgraphNeighborhood.clear();
+      IntSet setNeighborhood = HashIntSets.newMutableSet();   // Set used to quickly access each vertex key in the array
+      IntArrayListView vertexNeighborhood = new IntArrayListView();
+
+      // Get all neighbors of the subgraph vertices
+      for (int i = 0; i < subgraphVertices.size(); i++) {
+         int vertex = subgraphVertices.get(i);
+         subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
+         int numNeighbors = vertexNeighborhood.size();
+
+         for (int j = 0; j < numNeighbors; j++) {
+            int neighbor = vertexNeighborhood.get(j);
+            if (!setNeighborhood.contains(neighbor)) {
+               setNeighborhood.add(neighbor);
+               subgraphNeighborhood.add(neighbor);
+            }
+         }
+      }
+   }
+
+   /**
+    * Checks if the graph is connected using a DFS
+    * @param adjLists Graph adjacency lists (IntObjMap<IntIntMap>)
+    * @return true if the graph has more than one vertex and is connected, false otherwise
+    */
+   public static boolean isConnected(IntObjMap<IntIntMap> adjLists) {
+      final int size = adjLists.size();
+      if (size == 0) { return false; }
+
+      // Set for visited vertices
+      final IntSet visited = HashIntSets.newMutableSet(size);
+
+      // Stack for iterative DFS
+      final IntArrayList stack = new IntArrayList();  // Initial capacity
+
+      // Start from first vertex
+      final IntObjCursor<IntIntMap> cursor = adjLists.cursor();
+      cursor.moveNext();
+      final int startVertex = cursor.key();
+
+      stack.add(startVertex);
+      visited.add(startVertex);
+
+      // Iterative DFS
+      while (!stack.isEmpty()) {
+         final int current = stack.pop();
+         final IntIntMap neighbors = adjLists.get(current);
+
+         if (neighbors != null) {
+            final IntIntCursor neighborCursor = neighbors.cursor();
+            while (neighborCursor.moveNext()) {
+               final int neighbor = neighborCursor.key();
+               if (visited.add(neighbor)) {  // add() returns true if not present
+                  stack.add(neighbor);
+
+                  // Early exit if we've visited all vertices
+                  if (visited.size() == size) {
+                     return true;
+                  }
+               }
+            }
+         }
+      }
+
+      return visited.size() == size;
    }
 
 }
