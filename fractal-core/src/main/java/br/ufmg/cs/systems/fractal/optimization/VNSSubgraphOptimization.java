@@ -191,37 +191,42 @@ public class VNSSubgraphOptimization implements Logging {
    /**
     * Get the keys of all neighbors of the vertices of the subgraph
     * @param subgraph
+    * @param adjLists adjacency lists of the subgraph vertices
     * @param subgraphNeighborhood array to store the keys of the neighbors of the subgraph vertices
     * @param subgraphVertices array that contains all the keys of the subgraph vertices
+    * @return true if there are any neighbors of the vertices of the subgraph, false otherwise
     */
-   public static void getSubgraphNeighbors(VertexInducedOptimizationSubgraph subgraph, IntArrayList subgraphNeighborhood, IntArrayList subgraphVertices) {
+   public static boolean getSubgraphNeighbors(VertexInducedOptimizationSubgraph subgraph, IntObjMap<IntIntMap> adjLists, IntArrayList subgraphNeighborhood, IntArrayList subgraphVertices) {
       if(subgraphVertices == null || subgraphVertices.isEmpty())
-         return;
+         return false;
 
       subgraphNeighborhood.clear();
       IntSet setNeighborhood = HashIntSets.newMutableSet();   // Set used to quickly access each vertex key in the array
       IntArrayListView vertexNeighborhood = new IntArrayListView();
+      int numSubgraphVertices = subgraphVertices.size();
 
       // Get all neighbors of the subgraph vertices
-      for (int i = 0; i < subgraphVertices.size(); i++) {
+      for (int i = 0; i < numSubgraphVertices; i++) {
          int vertex = subgraphVertices.get(i);
          subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
          int numNeighbors = vertexNeighborhood.size();
 
          for (int j = 0; j < numNeighbors; j++) {
             int neighbor = vertexNeighborhood.get(j);
-            if (!setNeighborhood.contains(neighbor)) {
+            if (!setNeighborhood.contains(neighbor) && !adjLists.containsKey(neighbor)) {
                setNeighborhood.add(neighbor);
                subgraphNeighborhood.add(neighbor);
             }
          }
       }
+
+      return !subgraphNeighborhood.isEmpty();
    }
 
    /**
     * Checks if the graph is connected using a DFS
     * @param adjLists Graph adjacency lists (IntObjMap<IntIntMap>)
-    * @return true if the graph has more than one vertex and is connected, false otherwise
+    * @return true if the graph has at least one vertex and is connected, false otherwise
     */
    public static boolean isConnected(IntObjMap<IntIntMap> adjLists) {
       final int size = adjLists.size();
@@ -253,7 +258,7 @@ public class VNSSubgraphOptimization implements Logging {
                if (visited.add(neighbor)) {  // add() returns true if not present
                   stack.add(neighbor);
 
-                  // Early exit if we've visited all vertices
+                  // Early exit if all vertices have been visited
                   if (visited.size() == size) {
                      return true;
                   }

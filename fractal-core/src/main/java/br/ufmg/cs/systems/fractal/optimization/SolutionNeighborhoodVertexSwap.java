@@ -90,6 +90,11 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             int randomSubgraphVertexIndex = ThreadLocalRandom.current().nextInt(0, numSubgraphVertices);
             int randomSubgraphVertex = subgraphVertices.get(randomSubgraphVertexIndex);
 
+            // Checks if the random vertex it is not the vertex to be removed to avoid disconnecting the subgraph
+            if(randomSubgraphVertex == randomVertexToRemove && numSubgraphVertices > 1) {
+                continue;
+            }
+
             // Get a random neighbor from the random vertex neighborhood
             subgraph.neighborhoodVertices(randomSubgraphVertex, neighborhood);
             int numNeighbors = neighborhood.size();
@@ -99,7 +104,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
             int randomNeighborToAdd = neighborhood.get(randomNeighborIndex);
 
-            // Checks if the random neighbor it is not the vertex to remove
+            // Checks if the random neighbor it is not the vertex to be removed
             if(randomNeighborToAdd == randomVertexToRemove) {
                 continue;
             }
@@ -117,28 +122,19 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
         if(!verticesSwapped) {
             // Get all the neighbors of the subgraph vertices that it is not already in the subgraph
             IntArrayList neighborsNotInSubgraph = new IntArrayList();   // List of neighbors not in the subgraph
-            for (int i = 0; i < numSubgraphVertices; i++) {
-                int vertex = subgraphVertices.get(i);
-                subgraph.neighborhoodVertices(vertex, neighborhood);
-                for (int j = 0; j < neighborhood.size(); j++) {
-                    int neighbor = neighborhood.get(j);
-                    if (!adjLists.containsKey(neighbor) && neighbor != randomVertexToRemove) {
-                        neighborsNotInSubgraph.add(neighbor);   // add neighbor into a new set
-                    }
-                }
+            if(!VNSSubgraphOptimization.getSubgraphNeighbors(subgraph, adjLists, neighborsNotInSubgraph, subgraphVertices)) {
+                return;
             }
 
             // Get a random neighbor that are not in the subgraph
-            if (!neighborsNotInSubgraph.isEmpty()) {
-                int neighborsSize = neighborsNotInSubgraph.size();
-                int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, neighborsSize);
-                int neighborToAdd = neighborhood.get(randomNeighborIndex);
+            int neighborsSize = neighborsNotInSubgraph.size();
+            int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, neighborsSize);
+            int neighborToAdd = neighborhood.get(randomNeighborIndex);
 
-                // Swap vertices
-                subgraph.removeVertex(randomVertexToRemove);    // Remove the random vertex
-                subgraph.addVertex(neighborToAdd);        // Add the other random vertex
-                subgraph.setUpdateString(String.format("/-%d +%d", randomVertexToRemove, neighborToAdd));
-            }
+            // Swap vertices
+            subgraph.removeVertex(randomVertexToRemove);    // Remove the random vertex
+            subgraph.addVertex(neighborToAdd);        // Add the other random vertex
+            subgraph.setUpdateString(String.format("/-%d +%d", randomVertexToRemove, neighborToAdd));
         }
     }
 

@@ -34,7 +34,7 @@ class LocalSearchAggregation
         new SolutionNeighborhoodVertexAdd,
         new SolutionNeighborhoodVertexRemove,
         new SolutionNeighborhoodVertexSwap,
-        //new SolutionNeighborhoodVertexKAdd,
+        new SolutionNeighborhoodVertexKAdd,
         new SolutionNeighborhoodVertexKRemove
       )
 

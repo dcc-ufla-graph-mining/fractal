@@ -56,12 +56,10 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
             // Verifies if the cost has increased
             if(subgraph.cost() > initialCost) {
                 // Formats the string containing the k removed vertices for screen display
-                StringBuilder stringVertices = new StringBuilder();
                 for(int i = 0; i < k; i++) {
                     int vertex = verticesCombination.get(i);
-                    stringVertices.append("-").append(vertex);
+                    subgraph.setUpdateString(String.format("-%d", vertex));
                 }
-                subgraph.setUpdateString(stringVertices.toString());
                 return true;
             } else {
                 // Cost did not increase, add the k vertices
@@ -85,8 +83,8 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
         // Verifies if there are at least k non-articulation vertices to remove
         if(nonArticulationVertices.size() < k) { return; }
 
-        int count = 0;  // Variable to count the number of attempts to add a random vertex to prevent loops
-        int maxIterations = 1000;   // Max number of random vertices to generate
+        int count = 0;  // Variable to count the number of iterations to prevent loops
+        int maxIterations = 1000;   // Max number of random k-combination vertices to generate
         int numRemovedVertices = 0;
         IntArrayList removedVertices = new IntArrayList();
 
@@ -122,13 +120,10 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
 
         // Formats the string containing the k removed vertices for screen display
         if(numRemovedVertices == k) {
-            StringBuilder stringVertices = new StringBuilder();
-            stringVertices.append("/");
             for(int i = 0; i < k; i++) {
                 int vertex = removedVertices.get(i);
-                stringVertices.append("-").append(vertex);
+                subgraph.setUpdateString(String.format("/-%d", vertex));
             }
-            subgraph.setUpdateString(stringVertices.toString());
         }
     }
 }

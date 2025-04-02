@@ -1,13 +1,12 @@
 package br.ufmg.cs.systems.fractal.optimization;
 
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
-import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
+import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
-import com.koloboke.collect.set.IntSet;
-import com.koloboke.collect.set.hash.HashIntSets;
 
 import java.util.Iterator;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
     private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
@@ -22,23 +21,23 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
 
         // Get the keys of the vertices of the subgraph
         if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
-            System.out.println("subgraphVertices = " + subgraphVertices.size() + " adjLists = " +adjLists.size());
-            System.out.println("VertexKAdd FALSE - no subgraphVertices");
             return false;
         }
 
-        System.out.println("After first if");
         // Get all neighbors of the subgraph vertices
-        VNSSubgraphOptimization.getSubgraphNeighbors(subgraph, subgraphNeighborhood, subgraphVertices);
-        System.out.println("After getSubgraphNeighbors");
+        if(!VNSSubgraphOptimization.getSubgraphNeighbors(subgraph, adjLists, subgraphNeighborhood, subgraphVertices)) {
+            return false;
+        }
+
         // Verifies if there are at least k neighbors available for addition
-        if(subgraphNeighborhood.size() < k) { System.out.println("VertexKAdd FALSE - neighborhood < k"); return false; }
-        System.out.println("After second if");
+        if(subgraphNeighborhood.size() < k) { return false; }
+
         // Generates all possible k-element combinations from the subgraph's neighbor set
         Iterator<IntArrayList> it = subgraphNeighborhood.combinations(k);
         while(it.hasNext()) {
             IntArrayList neighborsCombination = it.next();
-            // Add k neighbors to try to improve the cost
+
+            // Adding k vertices to try to improve the cost
             for(int i = 0; i < k; i++) {
                 int neighbor = neighborsCombination.get(i);
                 subgraph.addVertex(neighbor);
@@ -46,28 +45,54 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
             // Verifies if the cost has increased
             if(subgraph.cost() > initialCost) {
                 // Formats the string containing the k added vertices for screen display
-                StringBuilder stringNeighbors = new StringBuilder();
                 for(int i = 0; i < k; i++) {
                     int neighbor = neighborsCombination.get(i);
-                    stringNeighbors.append("+").append(neighbor);
+                    subgraph.setUpdateString(String.format("+%d", neighbor));
                 }
-                subgraph.setUpdateString(stringNeighbors.toString());
-                System.out.println("VertexKAdd TRUE");
                 return true;
             } else {
                 // Cost did not increase, remove the k neighbors
-                for(int i = 0; i < k; i++) {
+                for(int i = k-1; i >= 0 ; i--) {
                     int neighbor = neighborsCombination.get(i);
                     subgraph.removeVertex(neighbor);
                 }
             }
         }
-        System.out.println("VertexKAdd FALSE");
         return false;
     }
 
     @Override
     public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
+
+        // Get the keys of the vertices of the subgraph
+        if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
+            return;
+        }
+
+        // Get all neighbors of the subgraph vertices
+        if(!VNSSubgraphOptimization.getSubgraphNeighbors(subgraph, adjLists, subgraphNeighborhood, subgraphVertices)) {
+            return;
+        }
+
+        // Verifies if there are at least k neighbors available for addition
+        if (subgraphNeighborhood.size() < k) {
+            return;
+        }
+
+        for (int i = 0; i < k; i++) {
+            // Generate a random vertex
+            int numNeighbors = subgraphNeighborhood.size();
+            int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
+
+            // Get the random vertex to add
+            IntCursor cur = subgraphNeighborhood.cursor();
+            for (int j = 0; j <= randomVertexIndex; j++) {
+                cur.moveNext();
+            }
+            int vertex = cur.elem();
+            subgraph.addVertex(vertex);   // Add the random vertex
+            subgraph.setUpdateString(String.format("/+%d", vertex));
+        }
     }
 }
