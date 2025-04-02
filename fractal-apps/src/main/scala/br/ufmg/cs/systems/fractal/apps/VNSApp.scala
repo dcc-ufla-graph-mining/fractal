@@ -33,7 +33,7 @@ class LocalSearchAggregation
       Array(
         new SolutionNeighborhoodVertexAdd,
         new SolutionNeighborhoodVertexRemove,
-        new SolutionNeighborhoodVertexSwap,
+        //new SolutionNeighborhoodVertexSwap,
         new SolutionNeighborhoodVertexKAdd,
         new SolutionNeighborhoodVertexKRemove
       )
@@ -43,7 +43,7 @@ class LocalSearchAggregation
       val improvement = vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
     } catch {
       case e: RuntimeException =>
-        logApp(s"EXCEPTION: ${e.getStackTrace().slice(0, 5).mkString(",")}")
+        logApp(s"EXCEPTION: ${e} ${e.getStackTrace().slice(0, 5).mkString("," + "")}")
         throw new RuntimeException(e)
     }
 
