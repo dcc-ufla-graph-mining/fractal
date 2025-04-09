@@ -46,6 +46,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                     }
                     disconected = true;
                     i = k;      // End this iteration
+                    adjLists = subgraph.getAdjLists();
                 }
             }
 
@@ -86,6 +87,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                         int neighbor = neighborsCombination.get(i);
                         subgraph.removeVertex(neighbor);
                     }
+                    adjLists = subgraph.getAdjLists();
                 }
             }
 
@@ -94,6 +96,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                 int vertex = nonArticulationCombination.get(i);
                 subgraph.addVertex(vertex);
             }
+            adjLists = subgraph.getAdjLists();
         }
         return false;
     }
@@ -149,6 +152,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                     }
                     removedVertices.clear();
                     numRemovedVertices = 0;
+                    adjLists = subgraph.getAdjLists();
                 }
             }
         }
@@ -164,7 +168,8 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
             }
 
             // Generate a random k-combination vertices from the subgraph neighborhood
-            for(int i = 0; i < k; i ++) {
+            int numVerticesAdded = 0;
+            while(numVerticesAdded < k) {
                 // Generate a random vertex
                 int numNeighbors = subgraphNeighborhood.size();
                 int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
@@ -175,8 +180,14 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                     cur.moveNext();
                 }
                 int randomNeighbor = cur.elem();
-                subgraph.addVertex(randomNeighbor);     // Add the random neighbor
-                stringVertices.append("+").append(randomNeighbor);  // Formats the string
+
+                // Check if the vertex is not in the subgraph
+                if(!adjLists.containsKey(randomNeighbor)) {
+                    subgraph.addVertex(randomNeighbor);     // Add the random neighbor
+                    stringVertices.append("+").append(randomNeighbor);  // Formats the string
+                    adjLists = subgraph.getAdjLists();
+                    numVerticesAdded++;
+                }
             }
 
             subgraph.setUpdateString(stringVertices.toString());

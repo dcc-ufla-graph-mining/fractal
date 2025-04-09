@@ -16,8 +16,9 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       adjLists = subgraph.getAdjLists();
 
       // Get the non-articulation vertices
-      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists))
+      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
          return false;
+      }
 
       double initialCost = subgraph.cost();        // Initial cost of the subgraph
 
@@ -35,7 +36,6 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
             subgraph.addVertex(vertex);
          }
       }
-
       return false;
    }
 
@@ -44,14 +44,15 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       adjLists = subgraph.getAdjLists();
 
       // Get the non-articulation vertices
-      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists))
+      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
          return;
+      }
 
       // Generate a random vertex index
       int numVertices = nonArticulationVertices.size();
       int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numVertices);
 
-      // Get the random vertex to remove
+      // Get the random vertex to be removed
       IntCursor cur = nonArticulationVertices.cursor();
       for(int i = 0; i <= randomVertexIndex; i++)
       {

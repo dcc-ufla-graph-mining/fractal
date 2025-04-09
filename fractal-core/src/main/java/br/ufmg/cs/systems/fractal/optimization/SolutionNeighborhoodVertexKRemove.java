@@ -4,6 +4,8 @@ import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
+import com.koloboke.collect.set.IntSet;
+import com.koloboke.collect.set.hash.HashIntSets;
 
 import java.util.Iterator;
 import java.util.concurrent.ThreadLocalRandom;
@@ -11,7 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
     private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
     private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
-    private final int k = 3;    // Number of vertices to be removed in each run
+    private final int k = 2;    // Number of vertices to be removed in each run
 
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
@@ -23,7 +25,9 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
             return false;
         }
         // Verifies if there are at least k non-articulation vertices to remove
-        if(nonArticulationVertices.size() < k) { return false; }
+        if(nonArticulationVertices.size() < k) {
+            return false;
+        }
 
         // Generates all possible k-element combinations from the non-articulation vertices set
         boolean disconected = false;
@@ -35,14 +39,17 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
             for(int i = 0; i < k; i++) {
                 int vertex = verticesCombination.get(i);
                 subgraph.removeVertex(vertex);
-                adjLists = subgraph.getAdjLists();
 
-                // If the graph is disconnected after remove one of the k vertices, add them again
+                adjLists = subgraph.getAdjLists();  // Update adjLists
+
+                // If the graph is disconnected after remove one of the k vertices, add them back
                 if(!VNSSubgraphOptimization.isConnected(adjLists)) {
+
                     for(int j = i; j >= 0; j--) {
                         int vertexToAdd = verticesCombination.get(j);
                         subgraph.addVertex(vertexToAdd);
                     }
+                    adjLists = subgraph.getAdjLists(); // Update adjLists
                     disconected = true;
                     i = k;      // End this iteration
                 }
@@ -56,17 +63,21 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
             // Verifies if the cost has increased
             if(subgraph.cost() > initialCost) {
                 // Formats the string containing the k removed vertices for screen display
+                StringBuilder stringVertices = new StringBuilder();
                 for(int i = 0; i < k; i++) {
                     int vertex = verticesCombination.get(i);
-                    subgraph.setUpdateString(String.format("-%d", vertex));
+                    stringVertices.append("-").append(vertex);
                 }
+                subgraph.setUpdateString(stringVertices.toString());
+
                 return true;
             } else {
-                // Cost did not increase, add the k vertices
+                // Cost did not increase, add back the k vertices
                 for(int i = 0; i < k; i++) {
                     int vertex = verticesCombination.get(i);
                     subgraph.addVertex(vertex);
                 }
+                adjLists = subgraph.getAdjLists();
             }
         }
         return false;
@@ -81,18 +92,24 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
             return;
         }
         // Verifies if there are at least k non-articulation vertices to remove
-        if(nonArticulationVertices.size() < k) { return; }
+        if(nonArticulationVertices.size() < k) {
+            return;
+        }
 
         int count = 0;  // Variable to count the number of iterations to prevent loops
         int maxIterations = 1000;   // Max number of random k-combination vertices to generate
         int numRemovedVertices = 0;
-        IntArrayList removedVertices = new IntArrayList();
+        IntSet removedVertices = HashIntSets.newMutableSet();
 
         while(numRemovedVertices < k && count < maxIterations) {
-            for (int i = 0; i < k; i++) {
+            count++;
+            boolean newRandomVertexGenerated = false;
+
+            while(!newRandomVertexGenerated) {
                 // Generate a random vertex
                 int numVertices = nonArticulationVertices.size();
                 int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numVertices);
+                newRandomVertexGenerated = true;
 
                 // Get the random vertex to remove
                 IntCursor cur = nonArticulationVertices.cursor();
@@ -100,30 +117,47 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
                     cur.moveNext();
                 }
                 int vertex = cur.elem();
+
+                // Checks if the random vertex has already been removed
+                if(removedVertices.contains(vertex)) {
+                    newRandomVertexGenerated = false;
+                    continue;
+                }
+
                 subgraph.removeVertex(vertex);   // Remove the random vertex
                 removedVertices.add(vertex);
-                ++numRemovedVertices;
+                numRemovedVertices++;
+                adjLists = subgraph.getAdjLists();  // Update adjLists
 
-                // Check if there are more non-articulation vertices to remove
-                if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
-                    // Add back the removed vertices
-                    for(int j = 0; j < numRemovedVertices; j++) {
-                        int vertexRemoved = removedVertices.get(j);
+                // If the graph is disconnected after remove one of the k vertices, add them back
+                if(!VNSSubgraphOptimization.isConnected(adjLists)) {
+                    IntCursor ncur = removedVertices.cursor();
+                    while(ncur.moveNext()) {
+                        int vertexRemoved = ncur.elem();
                         subgraph.addVertex(vertexRemoved);
                     }
+                    removedVertices.clear();
                     numRemovedVertices = 0;
-                    i = k;  // Ends the for loop
+                    adjLists = subgraph.getAdjLists();  // Update adjLists
                 }
             }
-            ++count;
         }
 
-        // Formats the string containing the k removed vertices for screen display
         if(numRemovedVertices == k) {
-            for(int i = 0; i < k; i++) {
-                int vertex = removedVertices.get(i);
-                subgraph.setUpdateString(String.format("/-%d", vertex));
+            // Formats the string containing the k removed vertices for screen display
+            StringBuilder stringVertices = new StringBuilder();
+            stringVertices.append("/");
+            IntCursor ncur = removedVertices.cursor();
+            while(ncur.moveNext()) {
+                int vertex = ncur.elem();
+                stringVertices.append("-").append(vertex);
             }
+            subgraph.setUpdateString(stringVertices.toString());
         }
+    }
+
+    @Override
+    public String toString() {
+        return "VertexKRemoveNeighborhood";
     }
 }

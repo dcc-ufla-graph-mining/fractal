@@ -4,8 +4,6 @@ import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
-
-import java.io.Console;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
@@ -20,6 +18,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
             return false;
         }
+
         double initialCost = subgraph.cost();
         IntArrayListView vertexNeighborhood = new IntArrayListView();
 
@@ -62,6 +61,8 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
         // Generate a new random vertex until it is not in the subgraph
         while (!vertexAdded && count < maxIterations) {
+            count++;
+
             // Get a random vertex from the subgraph
             int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numVertices);
             int randomVertex = subgraphVertices.get(randomVertexIndex);
@@ -81,7 +82,6 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                 subgraph.setUpdateString(String.format("/+%d", randomNeighbor));
                 vertexAdded = true;
             }
-            ++count;
         }
 
         if (!vertexAdded) {
@@ -94,7 +94,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             // Get a random neighbor that are not in the subgraph
             int neighborsSize = neighborsNotInSubgraph.size();
             int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, neighborsSize);
-            int neighbor = neighborhood.get(randomNeighborIndex);
+            int neighbor = neighborsNotInSubgraph.get(randomNeighborIndex);
 
             subgraph.addVertex(neighbor);    // Add the random neighbor vertex
             subgraph.setUpdateString(String.format("/+%d", neighbor));

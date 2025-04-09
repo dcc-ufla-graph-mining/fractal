@@ -3,7 +3,7 @@ package br.ufmg.cs.systems.fractal.apps
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
 import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
-import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexKAdd, SolutionNeighborhoodVertexKRemove, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
+import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexKAdd, SolutionNeighborhoodVertexKRemove, SolutionNeighborhoodVertexKSwap, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
 import org.apache.spark.SparkContext.jarOfObject
@@ -33,9 +33,10 @@ class LocalSearchAggregation
       Array(
         new SolutionNeighborhoodVertexAdd,
         new SolutionNeighborhoodVertexRemove,
-        //new SolutionNeighborhoodVertexSwap,
+        new SolutionNeighborhoodVertexSwap,
         new SolutionNeighborhoodVertexKAdd,
-        new SolutionNeighborhoodVertexKRemove
+        new SolutionNeighborhoodVertexKRemove,
+        new SolutionNeighborhoodVertexKSwap
       )
 
     val vnsOpt = new VNSSubgraphOptimization()
@@ -43,7 +44,7 @@ class LocalSearchAggregation
       val improvement = vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
     } catch {
       case e: RuntimeException =>
-        logApp(s"EXCEPTION: ${e} ${e.getStackTrace().slice(0, 5).mkString("," + "")}")
+        logApp(s"EXCEPTION: ${e} ${e.getStackTrace.slice(0, 5).mkString("," + "")}")
         throw new RuntimeException(e)
     }
 

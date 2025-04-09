@@ -179,6 +179,10 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       accessVertexNeighborhood(vertexToAdd, reusableVertexNeighbors, reusableEdgeNeighbors);
       IntIntMap adjList = HashIntIntMaps.newMutableMap();
 
+      if(adjLists.containsKey(vertexToAdd)) {
+         throw new RuntimeException("Vertex " + vertexToAdd + " is already in the subgraph!");
+      }
+
       adjLists.put(vertexToAdd, adjList);
       this.numVertices++;
 
@@ -205,6 +209,10 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     */
    public void removeVertex(int vertexToRemove) {
       accessVertexNeighborhood(vertexToRemove, reusableVertexNeighbors, reusableEdgeNeighbors);
+
+      if(!adjLists.containsKey(vertexToRemove)) {
+         throw new RuntimeException("Vertex " + vertexToRemove + " is not in the subgraph!");
+      }
 
       for(int i = 0; i < reusableVertexNeighbors.size(); i++) {
          int vertexNeighbor = reusableVertexNeighbors.get(i);

@@ -20,7 +20,7 @@ public class VNSSubgraphOptimization implements Logging {
    long initialTimeMs;
    private long elapsedRunTimeMs;   // Elapsed time in the current run
    long timeLimitMs;                // Time limit to execute the run
-   private static int timeTarjan;   // Used in the Tarjan method
+   private static int timeTarjan;
 
    /**
     * VNS implementation
@@ -53,7 +53,7 @@ public class VNSSubgraphOptimization implements Logging {
                improvement = true;
                idx = 0;
             } else {
-               ++idx;
+               idx++;
             }
             elapsedRunTimeMs = System.currentTimeMillis() - initialTimeMs;
          }
@@ -86,7 +86,7 @@ public class VNSSubgraphOptimization implements Logging {
       return hasImproved;
    }
 
-   // DFS to run the Tarjan method
+   // DFS used to run the Tarjan method
    private static int dfsTarjan(int u, int p, IntIntMap low, IntIntMap disc, IntObjMap<IntIntMap> adjLists, IntArrayList nonArticulationVertices) {
       int children = 0;                      // Count of children in DFS tree
       low.put(u, timeTarjan);                // Initialize discovery low value
@@ -124,7 +124,9 @@ public class VNSSubgraphOptimization implements Logging {
       return children;
    }
 
-   // Tarjan algorithm used to get the non-articulation points
+   /**
+   * Tarjan algorithm used to get the non-articulation points
+   */
    private static void tarjan(IntObjMap<IntIntMap> adjLists, IntArrayList nonArticulationVertices) {
       IntIntMap low, disc;
 
@@ -194,7 +196,7 @@ public class VNSSubgraphOptimization implements Logging {
     * @param adjLists adjacency lists of the subgraph vertices
     * @param subgraphNeighborhood array to store the keys of the neighbors of the subgraph vertices
     * @param subgraphVertices array that contains all the keys of the subgraph vertices
-    * @return true if there are any neighbors of the vertices of the subgraph, false otherwise
+    * @return true if there are any neighbors that is not already in the subgraph, false otherwise
     */
    public static boolean getSubgraphNeighbors(VertexInducedOptimizationSubgraph subgraph, IntObjMap<IntIntMap> adjLists, IntArrayList subgraphNeighborhood, IntArrayList subgraphVertices) {
       if(subgraphVertices == null || subgraphVertices.isEmpty())

@@ -42,17 +42,20 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
                 int neighbor = neighborsCombination.get(i);
                 subgraph.addVertex(neighbor);
             }
+
             // Verifies if the cost has increased
             if(subgraph.cost() > initialCost) {
                 // Formats the string containing the k added vertices for screen display
+                StringBuilder stringVertices = new StringBuilder();
                 for(int i = 0; i < k; i++) {
                     int neighbor = neighborsCombination.get(i);
-                    subgraph.setUpdateString(String.format("+%d", neighbor));
+                    stringVertices.append("+").append(neighbor);
                 }
+                subgraph.setUpdateString(stringVertices.toString());
                 return true;
             } else {
                 // Cost did not increase, remove the k neighbors
-                for(int i = k-1; i >= 0 ; i--) {
+                for(int i = 0; i < k; i++) {
                     int neighbor = neighborsCombination.get(i);
                     subgraph.removeVertex(neighbor);
                 }
@@ -80,19 +83,35 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
             return;
         }
 
-        for (int i = 0; i < k; i++) {
+        StringBuilder stringVertices = new StringBuilder();
+        stringVertices.append("/");
+
+        int numVerticesAdded = 0;
+        while(numVerticesAdded < k) {
             // Generate a random vertex
             int numNeighbors = subgraphNeighborhood.size();
-            int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
+            int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
 
-            // Get the random vertex to add
+            // Get the random vertex to add it
             IntCursor cur = subgraphNeighborhood.cursor();
-            for (int j = 0; j <= randomVertexIndex; j++) {
+            for (int j = 0; j <= randomNeighborIndex; j++) {
                 cur.moveNext();
             }
-            int vertex = cur.elem();
-            subgraph.addVertex(vertex);   // Add the random vertex
-            subgraph.setUpdateString(String.format("/+%d", vertex));
+            int neighbor = cur.elem();
+
+            // Checks if the vertex is not in the subgraph
+            if(!adjLists.containsKey(neighbor)) {
+                subgraph.addVertex(neighbor);   // Add the random vertex
+                stringVertices.append("+").append(neighbor);    // Formats the string
+                numVerticesAdded++;
+                adjLists = subgraph.getAdjLists();
+            }
         }
+        subgraph.setUpdateString(stringVertices.toString());
+    }
+
+    @Override
+    public String toString() {
+        return "VertexKAddNeighborhood";
     }
 }
