@@ -49,7 +49,9 @@ public class VNSSubgraphOptimization implements Logging {
             sneighborhood.randomShake(vnsSubgraph);
             logApp(() -> String.format("%d %s", id, vnsSubgraph.toShortString()));
             if (localSearch(vnsSubgraph, sneighborhood, id)) {
-               vnsSubgraph.copyTo(subgraph);    // Copies the improved subgraph to the solution
+               if(vnsSubgraph.cost() > subgraph.cost()) {
+                  vnsSubgraph.copyTo(subgraph);    // Copies the improved subgraph to the solution
+               }
                improvement = true;
                idx = 0;
             } else {
