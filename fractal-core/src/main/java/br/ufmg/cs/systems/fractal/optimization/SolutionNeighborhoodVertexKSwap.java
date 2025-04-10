@@ -15,6 +15,8 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
     private final IntArrayList subgraphNeighborhood = new IntArrayList();
     private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
     private final int k = 2;    // Number of a pair of vertices to be swapped in each run
+    private final IntArrayList stack = new IntArrayList();
+    private final IntSet visited = HashIntSets.newMutableSet();
 
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
@@ -27,10 +29,10 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
         }
 
         // Generates all possible k-element combinations from the non-articulation vertices set
-        boolean disconected = false;
         Iterator<IntArrayList> it = nonArticulationVertices.combinations(k);
         while(it.hasNext()) {
             IntArrayList nonArticulationCombination = it.next();
+            boolean disconected = false;
 
             // Removing k vertices
             for (int i = 0; i < k; i++) {
@@ -39,7 +41,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                 adjLists = subgraph.getAdjLists();
 
                 // If the graph is disconnected after remove one of the k vertices, add them again
-                if (!VNSSubgraphOptimization.isConnected(adjLists)) {
+                if (!VNSSubgraphOptimization.isConnected(adjLists, stack, visited)) {
                     for (int j = i; j >= 0; j--) {
                         int vertexToAdd = nonArticulationCombination.get(j);
                         subgraph.addVertex(vertexToAdd);
@@ -144,7 +146,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                 adjLists = subgraph.getAdjLists();  // Update adjLists
 
                 // If the graph is disconnected after remove one of the k vertices, add them back
-                if(!VNSSubgraphOptimization.isConnected(adjLists)) {
+                if(!VNSSubgraphOptimization.isConnected(adjLists, stack, visited)) {
                     IntCursor ncur = removedVertices.cursor();
                     while(ncur.moveNext()) {
                         int vertexRemoved = ncur.elem();

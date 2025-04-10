@@ -232,15 +232,12 @@ public class VNSSubgraphOptimization implements Logging {
     * @param adjLists Graph adjacency lists (IntObjMap<IntIntMap>)
     * @return true if the graph has at least one vertex and is connected, false otherwise
     */
-   public static boolean isConnected(IntObjMap<IntIntMap> adjLists) {
+   public static boolean isConnected(IntObjMap<IntIntMap> adjLists, IntArrayList stack, IntSet visited) {
       final int size = adjLists.size();
       if (size == 0) { return false; }
 
-      // Set for visited vertices
-      final IntSet visited = HashIntSets.newMutableSet(size);
-
-      // Stack for iterative DFS
-      final IntArrayList stack = new IntArrayList();  // Initial capacity
+      stack.clear();
+      visited.clear();
 
       // Start from first vertex
       final IntObjCursor<IntIntMap> cursor = adjLists.cursor();
