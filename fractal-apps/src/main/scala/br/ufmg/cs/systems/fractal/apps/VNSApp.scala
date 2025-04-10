@@ -96,6 +96,28 @@ object Conductance extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
   }
 }
 
+
+object Modularity extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
+  with Serializable {
+
+  def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
+    if (subgraph.getNumVertices == 1) return -1
+    val internalEdges = subgraph.getNumEdges
+    val graph = subgraph.getUnderlyingGraph
+    val graphEdges = graph.numEdges()
+
+    var sumDegreesSubgraph = 0
+    val vcur = subgraph.getAdjLists.keySet().cursor()
+    while (vcur.moveNext()) {
+      val u = vcur.elem()
+      sumDegreesSubgraph += subgraph.vertexDegree(u)
+    }
+
+    (1 / (2*graphEdges).toDouble) * (2*internalEdges - ((sumDegreesSubgraph*sumDegreesSubgraph) / (2*graphEdges).toDouble))
+
+  }
+}
+
 object VNSApp extends Logging {
   def main(args: Array[String]): Unit = {
     // environment setup (Spark)
@@ -113,6 +135,7 @@ object VNSApp extends Logging {
     val objectiveFunction = args(5) match {
       case "densitymass" => DensityMass
       case "conductance" => Conductance
+      case "modularity" => Modularity
       case _ =>
           throw new RuntimeException(s"Invalid objective function: ${args(5)}")
     }
