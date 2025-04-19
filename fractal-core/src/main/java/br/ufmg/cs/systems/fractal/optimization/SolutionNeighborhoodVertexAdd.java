@@ -13,13 +13,13 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
+        double initialCost = subgraph.getCost();
 
         // Get the keys of the vertices of the subgraph
         if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
             return false;
         }
 
-        double initialCost = subgraph.cost();
         IntArrayListView vertexNeighborhood = new IntArrayListView();
 
         // For each subgraph vertex, try to add his neighbors to improve the cost
@@ -33,11 +33,11 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                     subgraph.addVertex((neighbor));
 
                     // Verifies if the cost has increased
-                    if (subgraph.cost() > initialCost) {
+                    if (subgraph.getCost() > initialCost) {
                         subgraph.setUpdateString(String.format("+%d", neighbor));
                         return true;
                     } else {
-                        subgraph.removeVertex(neighbor);
+                        subgraph.removeVertex(neighbor, initialCost);
                     }
                 }
             }

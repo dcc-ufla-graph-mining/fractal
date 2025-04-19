@@ -4,7 +4,6 @@ import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
-import com.koloboke.collect.map.hash.HashIntIntMaps;
 import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
 
@@ -23,7 +22,7 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
-        double initialCost = subgraph.cost();
+        double initialCost = subgraph.getCost();
 
         // Get the non-articulation vertices of the subgraph
         if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
@@ -43,19 +42,22 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
             // Removing k vertices to try to improve the cost
             for(int i = 0; i < k; i++) {
                 int vertex = verticesCombination.get(i);
-                subgraph.removeVertex(vertex);
+                if(i < k-1)
+                    subgraph.removeVertex(vertex, initialCost);
+                else
+                    subgraph.removeVertex(vertex);  // Remove vertex and recalculate the cost
 
                 adjLists = subgraph.getAdjLists();  // Update adjLists
 
                 // If the graph is disconnected after remove one of the k vertices, add them back
                 if(!VNSSubgraphOptimization.isConnected(adjLists, stack, visited)) {
-
                     for(int j = i; j >= 0; j--) {
                         int vertexToAdd = verticesCombination.get(j);
-                        subgraph.addVertex(vertexToAdd);
+                        subgraph.addVertex(vertexToAdd, initialCost);
                     }
-                    adjLists = subgraph.getAdjLists(); // Update adjLists
+                    adjLists = subgraph.getAdjLists();  // Update adjLists
                     disconected = true;
+
                     i = k;      // End this iteration
                 }
             }
@@ -66,7 +68,7 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
             }
 
             // Verifies if the cost has increased
-            if(subgraph.cost() > initialCost) {
+            if(subgraph.getCost() > initialCost) {
                 // Formats the string containing the k removed vertices for screen display
                 StringBuilder stringVertices = new StringBuilder();
                 for(int i = 0; i < k; i++) {
@@ -80,7 +82,7 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
                 // Cost did not increase, add back the k vertices
                 for(int j = k-1; j >= 0 ; j--) {
                     int vertex = verticesCombination.get(j);
-                    subgraph.addVertex(vertex);
+                    subgraph.addVertex(vertex, initialCost);
                 }
                 adjLists = subgraph.getAdjLists();
             }
@@ -91,6 +93,7 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
     @Override
     public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
+        double initialCost = subgraph.getCost();
 
         // Get the non-articulation vertices of the subgraph
         if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
@@ -129,7 +132,11 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
                     continue;
                 }
 
-                subgraph.removeVertex(vertex);   // Remove the random vertex
+                if(numRemovedVertices < k-1)
+                    subgraph.removeVertex(vertex, initialCost);   // Remove the random vertex
+                else
+                    subgraph.removeVertex(vertex);  // Remove the random vertex and recalculate the cost
+
                 removedVertices.add(vertex);
                 numRemovedVertices++;
                 adjLists = subgraph.getAdjLists();  // Update adjLists
@@ -139,7 +146,7 @@ public class SolutionNeighborhoodVertexKRemove implements SolutionNeighborhood {
                     IntCursor ncur = removedVertices.cursor();
                     while(ncur.moveNext()) {
                         int vertexRemoved = ncur.elem();
-                        subgraph.addVertex(vertexRemoved);
+                        subgraph.addVertex(vertexRemoved, initialCost);
                     }
                     removedVertices.clear();
                     numRemovedVertices = 0;

@@ -64,7 +64,7 @@ public class PatternExplorationPlanOrderingHeuristic extends PatternExplorationP
          vertexLabelMap.set(dst, dstLabel);
       }
 
-      // 3. initialize cost map
+      // 3. initialize getCost map
       ObjObjMap<IntArrayList,IntArrayList> costMap =
               HashObjObjMaps.newMutableMap();
       ObjObjMap<IntArrayList,IntArrayList> newCostMap =

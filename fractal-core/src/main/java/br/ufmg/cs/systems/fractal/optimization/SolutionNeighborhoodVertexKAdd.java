@@ -17,7 +17,7 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
-        double initialCost = subgraph.cost();
+        double initialCost = subgraph.getCost();
 
         // Get the keys of the vertices of the subgraph
         if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
@@ -40,11 +40,14 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
             // Adding k vertices to try to improve the cost
             for(int i = 0; i < k; i++) {
                 int neighbor = neighborsCombination.get(i);
-                subgraph.addVertex(neighbor);
+                if(i < k-1)
+                    subgraph.addVertex(neighbor, initialCost);
+                else
+                    subgraph.addVertex(neighbor);   // Add vertex and recalculate the cost
             }
 
             // Verifies if the cost has increased
-            if(subgraph.cost() > initialCost) {
+            if(subgraph.getCost() > initialCost) {
                 // Formats the string containing the k added vertices for screen display
                 StringBuilder stringVertices = new StringBuilder();
                 for(int i = 0; i < k; i++) {
@@ -57,7 +60,7 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
                 // Cost did not increase, remove the k neighbors
                 for(int i = 0; i < k; i++) {
                     int neighbor = neighborsCombination.get(i);
-                    subgraph.removeVertex(neighbor);
+                    subgraph.removeVertex(neighbor, initialCost);
                 }
             }
         }
@@ -67,6 +70,7 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
     @Override
     public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
+        double initialCost = subgraph.getCost();
 
         // Get the keys of the vertices of the subgraph
         if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
@@ -101,9 +105,14 @@ public class SolutionNeighborhoodVertexKAdd implements SolutionNeighborhood{
 
             // Checks if the vertex is not in the subgraph
             if(!adjLists.containsKey(neighbor)) {
-                subgraph.addVertex(neighbor);   // Add the random vertex
-                stringVertices.append("+").append(neighbor);    // Formats the string
                 numVerticesAdded++;
+
+                if(numVerticesAdded < k)
+                    subgraph.addVertex(neighbor, initialCost);   // Add the random vertex
+                else
+                    subgraph.addVertex(neighbor);   // Add the random vertex and recalculate the cost
+
+                stringVertices.append("+").append(neighbor);    // Formats the string
                 adjLists = subgraph.getAdjLists();
             }
         }

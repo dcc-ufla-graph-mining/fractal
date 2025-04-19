@@ -39,7 +39,7 @@ public class SolutionNeighborhoodNeighborhoodAdd implements SolutionNeighborhood
       if(!getSubgraphVertices(subgraph))
          return false;
 
-      double initialCost = subgraph.cost();
+      double initialCost = subgraph.getCost();
       IntArrayListView vertexNeighborhood = new IntArrayListView();
 
       neighborhoodVertices.clear();
@@ -59,7 +59,7 @@ public class SolutionNeighborhoodNeighborhoodAdd implements SolutionNeighborhood
          }
       }
 
-      if (subgraph.cost() > initialCost) {
+      if (subgraph.getCost() > initialCost) {
          subgraph.setUpdateString(String.format("+%s", neighborhoodVertices));
          return true;
       } else {

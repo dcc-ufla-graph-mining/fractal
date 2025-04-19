@@ -34,9 +34,9 @@ class LocalSearchAggregation
         new SolutionNeighborhoodVertexAdd,
         new SolutionNeighborhoodVertexRemove,
         new SolutionNeighborhoodVertexSwap,
-        new SolutionNeighborhoodVertexKAdd,
-        new SolutionNeighborhoodVertexKRemove,
-        new SolutionNeighborhoodVertexKSwap
+        //new SolutionNeighborhoodVertexKAdd,
+        //new SolutionNeighborhoodVertexKRemove,
+        //new SolutionNeighborhoodVertexKSwap
       )
 
     val vnsOpt = new VNSSubgraphOptimization()
@@ -48,7 +48,7 @@ class LocalSearchAggregation
         throw new RuntimeException(e)
     }
 
-    val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.cost)
+    val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.getCost)
     map(0L, subgraphAndCost)
   }
 }
@@ -67,7 +67,7 @@ object DensityMass extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
     else if (subgraphNumVertices > 2) {
       cost = (2.0 * numEdges) / (subgraphNumVertices * (subgraphNumVertices - 1))
     }
-    // else cost remains 0.0 (for 0 or 1 vertices)
+    // else getCost remains 0.0 (for 0 or 1 vertices)
 
     cost
   }

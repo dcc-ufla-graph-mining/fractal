@@ -27,7 +27,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             return false;
         }
 
-        double initialCost = subgraph.cost();
+        double initialCost = subgraph.getCost();
         IntArrayListView vertexNeighborhood = new IntArrayListView();
 
         // Get a vertex to be removed
@@ -53,17 +53,17 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
                             subgraph.addVertex(neighborToAdd);
 
                             // Check if the swap increased the cost
-                            if (subgraph.cost() > initialCost) {
+                            if (subgraph.getCost() > initialCost) {
                                 subgraph.setUpdateString(String.format("-%d+%d", vertexToRemove, neighborToAdd));
                                 return true;
                             } else {
-                                subgraph.removeVertex(neighborToAdd);
+                                subgraph.removeVertex(neighborToAdd, initialCost);
                             }
                         }
                     }
                 }
             }
-            subgraph.addVertex(vertexToRemove);
+            subgraph.addVertex(vertexToRemove, initialCost);
         }
         return false;
     }
@@ -123,8 +123,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
 
             // Checks if the neighbor is not in the subgraph and swap the vertices
             if (!adjLists.containsKey(randomNeighborToAdd)) {
-                subgraph.removeVertex(randomVertexToRemove);    // Remove the random vertex
-                subgraph.addVertex(randomNeighborToAdd);        // Add the random neighbor
+                subgraph.swapVertices(randomVertexToRemove, randomNeighborToAdd);   // Swap vertices
                 subgraph.setUpdateString(String.format("/-%d+%d", randomVertexToRemove, randomNeighborToAdd));
                 verticesSwapped = true;
             }
@@ -140,12 +139,10 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             // Get a random neighbor that are not in the subgraph
             int neighborsSize = neighborsNotInSubgraph.size();
             int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, neighborsSize);
-            int neighborToAdd = neighborsNotInSubgraph.get(randomNeighborIndex);
+            int randomNeighborToAdd = neighborsNotInSubgraph.get(randomNeighborIndex);
 
-            // Swap vertices
-            subgraph.removeVertex(randomVertexToRemove);    // Remove the random vertex
-            subgraph.addVertex(neighborToAdd);        // Add the random neighbor
-            subgraph.setUpdateString(String.format("/-%d+%d", randomVertexToRemove, neighborToAdd));
+            subgraph.swapVertices(randomVertexToRemove, randomNeighborToAdd);   // Swap vertices
+            subgraph.setUpdateString(String.format("/-%d+%d", randomVertexToRemove, randomNeighborToAdd));
         }
     }
 

@@ -21,7 +21,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
-        double initialCost = subgraph.cost();
+        double initialCost = subgraph.getCost();
 
         // Initialize the required structures and verifies if there are the minimum number of elements to proceed
         if(!initializeStructures(subgraph)) {
@@ -37,14 +37,19 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
             // Removing k vertices
             for (int i = 0; i < k; i++) {
                 int vertex = nonArticulationCombination.get(i);
-                subgraph.removeVertex(vertex);
-                adjLists = subgraph.getAdjLists();
+
+                if(i < k-1)
+                    subgraph.removeVertex(vertex, initialCost);
+                else
+                    subgraph.removeVertex(vertex); // Remove vertex and recalculate the cost
+
+                adjLists = subgraph.getAdjLists();  // Update adjLists
 
                 // If the graph is disconnected after remove one of the k vertices, add them again
                 if (!VNSSubgraphOptimization.isConnected(adjLists, stack, visited)) {
                     for (int j = i; j >= 0; j--) {
                         int vertexToAdd = nonArticulationCombination.get(j);
-                        subgraph.addVertex(vertexToAdd);
+                        subgraph.addVertex(vertexToAdd, initialCost);
                     }
                     disconected = true;
                     i = k;      // End this iteration
@@ -65,11 +70,15 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                 // Adding k vertices to try to improve the cost
                 for (int i = 0; i < k; i++) {
                     int neighbor = neighborsCombination.get(i);
-                    subgraph.addVertex(neighbor);
+
+                    if(i < k-1)
+                        subgraph.addVertex(neighbor, initialCost);
+                    else
+                        subgraph.addVertex(neighbor);   // Add vertex and recalculate cost
                 }
 
                 // Verifies if the cost has increased
-                if(subgraph.cost() > initialCost) {
+                if(subgraph.getCost() > initialCost) {
                     // Formats the string containing the k pairs of swapped vertices for screen display and returns true
                     StringBuilder stringVertices = new StringBuilder();
                     for(int i = 0; i < k; i++) {
@@ -87,7 +96,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                     // Cost did not increase, remove the k neighbors
                     for (int i = 0; i < k; i++) {
                         int neighbor = neighborsCombination.get(i);
-                        subgraph.removeVertex(neighbor);
+                        subgraph.removeVertex(neighbor, initialCost);
                     }
                     adjLists = subgraph.getAdjLists();
                 }
@@ -96,7 +105,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
             // Cost did not increase, add back the k non-articulation vertices
             for(int i = 0; i < k; i++) {
                 int vertex = nonArticulationCombination.get(i);
-                subgraph.addVertex(vertex);
+                subgraph.addVertex(vertex, initialCost);
             }
             adjLists = subgraph.getAdjLists();
         }
@@ -106,6 +115,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
     @Override
     public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
+        double initialCost = subgraph.getCost();
 
         // Initialize the required structures and verifies if there are the minimum number of elements to proceed
         if(!initializeStructures(subgraph)) {
@@ -140,7 +150,11 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                     continue;
                 }
 
-                subgraph.removeVertex(vertex);   // Remove the random vertex
+                if(numRemovedVertices < k-1)
+                    subgraph.removeVertex(vertex, initialCost);   // Remove the random vertex
+                else
+                    subgraph.removeVertex(vertex);   // Remove the random vertex and recalculate the subgraph cost
+
                 removedVertices.add(vertex);
                 numRemovedVertices++;
                 adjLists = subgraph.getAdjLists();  // Update adjLists
@@ -150,7 +164,7 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
                     IntCursor ncur = removedVertices.cursor();
                     while(ncur.moveNext()) {
                         int vertexRemoved = ncur.elem();
-                        subgraph.addVertex(vertexRemoved);
+                        subgraph.addVertex(vertexRemoved, initialCost);
                     }
                     removedVertices.clear();
                     numRemovedVertices = 0;
@@ -185,7 +199,11 @@ public class SolutionNeighborhoodVertexKSwap implements SolutionNeighborhood{
 
                 // Check if the vertex is not in the subgraph
                 if(!adjLists.containsKey(randomNeighbor)) {
-                    subgraph.addVertex(randomNeighbor);     // Add the random neighbor
+                    if(numVerticesAdded < k-1)
+                        subgraph.addVertex(randomNeighbor, initialCost);     // Add the random neighbor
+                    else
+                        subgraph.addVertex(randomNeighbor);     // Add the random neighbor and recalculate cost
+
                     stringVertices.append("+").append(randomNeighbor);  // Formats the string
                     adjLists = subgraph.getAdjLists();
                     numVerticesAdded++;

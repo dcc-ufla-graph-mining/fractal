@@ -108,16 +108,16 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          target.adjLists.put(vertex, adjList);
       }
 
-      target.cost = this.cost();
+      target.cost = this.getCost();
    }
 
    public int vertexDegree(int u) {
       return adjLists.get(u).size();
    }
 
-   public double cost() {
-      return cost;
-   }
+   public double getCost() { return cost; }
+
+   private void setCost(double cost) { this.cost = cost; }
 
    public int getNumVertices() { return numVertices; }
 
@@ -171,11 +171,14 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       this.updateString = updateString;
    }
 
+
    /**
-    * Adds a new vertex to this subgraph. Assumes that adding the vertex does not disconnect the subgraph.
-    * @param vertexToAdd
+    * Adds a vertex to the subgraph and set the cost
+    * Assumes that adding the vertex does not disconnect the subgraph.
+    * @param vertexToAdd vertex to be added
+    * @param cost new subgraph cost
     */
-   public void addVertex(int vertexToAdd) {
+   public void addVertex(int vertexToAdd, double cost) {
       accessVertexNeighborhood(vertexToAdd, reusableVertexNeighbors, reusableEdgeNeighbors);
       IntIntMap adjList = HashIntIntMaps.newMutableMap();
 
@@ -199,15 +202,28 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          }
       }
 
-      updateCost();
+      setCost(cost);
    }
 
+
    /**
-    * Update this subgraph by removing a vertex
-    * This function assumes that the removed vertex DOES NOT disconnect the subgraph
-    * @param vertexToRemove
+    * Adds a new vertex to this subgraph and recalculate the cost
+    * Assumes that adding the vertex does not disconnect the subgraph.
+    * @param vertexToAdd vertex to be added to the subgraph
     */
-   public void removeVertex(int vertexToRemove) {
+   public void addVertex(int vertexToAdd) {
+      addVertex(vertexToAdd, 0);
+      updateCost();  // Recalculate cost
+   }
+
+
+   /**
+    * Update this subgraph by removing a vertex and set the cost
+    * This function assumes that the removed vertex DOES NOT disconnect the subgraph
+    * @param vertexToRemove vertex to be removed
+    * @param cost new subgraph cost
+    */
+   public void removeVertex(int vertexToRemove, double cost) {
       accessVertexNeighborhood(vertexToRemove, reusableVertexNeighbors, reusableEdgeNeighbors);
 
       if(!adjLists.containsKey(vertexToRemove)) {
@@ -227,19 +243,33 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       adjLists.remove(vertexToRemove);
       this.numVertices--;
 
+      setCost(cost);
+   }
+
+
+   /**
+    * Update this subgraph by removing a vertex and recalculate the cost
+    * This function assumes that the removed vertex DOES NOT disconnect the subgraph
+    * @param vertexToRemove vertex to be removed
+    */
+   public void removeVertex(int vertexToRemove) {
+      removeVertex(vertexToRemove, 0);
       updateCost();
    }
+
 
    /**
     * Removes a vertex from the subgraph and adds another vertex. This
     * function assumes that after the swap, the subgraph continues connected
-    * @param vertexToRemove
-    * @param vertexToAdd
+    * @param vertexToRemove vertex to be removed
+    * @param vertexToAdd vertex to be added
     */
    public void swapVertices(int vertexToRemove, int vertexToAdd) {
-      removeVertex(vertexToRemove);
-      addVertex(vertexToAdd);
+      removeVertex(vertexToRemove, 0);
+      addVertex(vertexToAdd, 0);
+      updateCost();
    }
+
 
    /**
     * Subgraph as a string
@@ -253,7 +283,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(",nedges=");
       sb.append(numEdges);
       sb.append(",update=").append(this.updateString);
-      sb.append(",cost=");
+      sb.append(",getCost=");
       sb.append(String.format("%f", cost));
       sb.append(")");
       return sb.toString();
@@ -266,7 +296,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(",nedges=");
       sb.append(numEdges);
       sb.append(",vertices={").append(getStringVertices()).append("}");
-      sb.append(",cost=");
+      sb.append(",getCost=");
       sb.append(String.format("%f", cost));
       sb.append(")");
       return sb.toString();

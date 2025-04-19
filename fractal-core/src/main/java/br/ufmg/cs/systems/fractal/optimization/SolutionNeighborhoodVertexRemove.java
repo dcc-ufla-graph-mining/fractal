@@ -20,7 +20,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          return false;
       }
 
-      double initialCost = subgraph.cost();        // Initial cost of the subgraph
+      double initialCost = subgraph.getCost();        // Initial cost of the subgraph
 
       // Remove non-articulation vertices to try to improve the cost
       IntCursor cur = nonArticulationVertices.cursor();
@@ -29,11 +29,11 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          subgraph.removeVertex(vertex);
 
          // Checks if the cost has increased
-         if (subgraph.cost() > initialCost) {
+         if (subgraph.getCost() > initialCost) {
             subgraph.setUpdateString(String.format("-%d", vertex));
             return true;
          } else {
-            subgraph.addVertex(vertex);
+            subgraph.addVertex(vertex, initialCost);
          }
       }
       return false;
