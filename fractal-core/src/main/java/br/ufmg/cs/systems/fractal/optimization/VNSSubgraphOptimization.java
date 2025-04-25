@@ -20,7 +20,6 @@ public class VNSSubgraphOptimization implements Logging {
    long initialTimeMs;
    private long elapsedRunTimeMs;   // Elapsed time in the current run
    long timeLimitMs;                // Time limit to execute the run
-   private static int timeTarjan;
 
    /**
     * VNS implementation
@@ -94,11 +93,11 @@ public class VNSSubgraphOptimization implements Logging {
    }
 
    // DFS used to run the Tarjan method
-   private static int dfsTarjan(int u, int p, IntIntMap low, IntIntMap disc, IntObjMap<IntIntMap> adjLists, IntArrayList nonArticulationVertices) {
+   private static int dfsTarjan(int u, int p, IntIntMap low, IntIntMap disc, IntObjMap<IntIntMap> adjLists, IntArrayList nonArticulationVertices, int[] timeTarjan) {
       int children = 0;                      // Count of children in DFS tree
-      low.put(u, timeTarjan);                // Initialize discovery low value
-      disc.put(u, timeTarjan);               // Initialize discovery time
-      timeTarjan++;                          // Increasing dfs time
+      low.put(u, timeTarjan[0]);                // Initialize discovery low value
+      disc.put(u, timeTarjan[0]);               // Initialize discovery time
+      timeTarjan[0]++;                          // Increasing dfs time
       boolean isArticulation = false;  // Stores whether a vertex is an articulation point
 
       // Iterating through the adjacency list of vertex (u)
@@ -114,7 +113,7 @@ public class VNSSubgraphOptimization implements Logging {
          // Checks if (v) has not been discovered before and them calls dfsTarjan for (v)
          if(!disc.containsKey(v)) {
             children++;
-            dfsTarjan(v, u, low, disc, adjLists, nonArticulationVertices);
+            dfsTarjan(v, u, low, disc, adjLists, nonArticulationVertices, timeTarjan);
             if(u != p && disc.get(u) <= low.get(v))
                isArticulation = true;  // vertex (u) is an articulation point
 
@@ -139,14 +138,14 @@ public class VNSSubgraphOptimization implements Logging {
 
       // Initializing auxiliary structures
       low = disc = HashIntIntMaps.newMutableMap();
-      timeTarjan = 0;
+      int[] timeTarjan = {0};
 
       // Executing recursive Tarjan
       int u;
       IntObjCursor<IntIntMap> cursor = adjLists.cursor();
       if(cursor.moveNext()) {
          u = cursor.key();
-         int children = dfsTarjan(u, u, low, disc, adjLists, nonArticulationVertices);
+         int children = dfsTarjan(u, u, low, disc, adjLists, nonArticulationVertices, timeTarjan);
 
          if (children < 2)
             nonArticulationVertices.add(u);

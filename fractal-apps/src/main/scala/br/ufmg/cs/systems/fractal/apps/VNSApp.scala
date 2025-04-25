@@ -6,6 +6,7 @@ import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
 import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexKAdd, SolutionNeighborhoodVertexKRemove, SolutionNeighborhoodVertexKSwap, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
+import com.koloboke.collect.map.{IntIntMap, IntObjCursor}
 import org.apache.spark.SparkContext.jarOfObject
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -118,6 +119,36 @@ object Modularity extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
   }
 }
 
+object DenseSubgraph extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
+  override def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
+    subgraph.getNumEdges / subgraph.getNumVertices.toDouble
+  }
+}
+
+object TriangleDensestSubgraph extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
+  override def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
+    var numTriangles = 0L
+    val adjLists = subgraph.getAdjLists()
+    val cur: IntObjCursor[IntIntMap] = adjLists.cursor()
+    while (cur.moveNext()) {
+      val u = cur.key()
+      val uAdjList = cur.value().keySet()
+      val vcur = cur.value().cursor()
+      while (vcur.moveNext()) {
+        val v = vcur.key()
+        if (u < v) {
+          val vncur = adjLists.get(v).keySet().cursor()
+          while (vncur.moveNext()) {
+            if (uAdjList.contains(vncur.elem())) numTriangles += 1
+          }
+        }
+      }
+    }
+
+    numTriangles / subgraph.getNumVertices.toDouble
+  }
+}
+
 object VNSApp extends Logging {
   def main(args: Array[String]): Unit = {
     // environment setup (Spark)
@@ -136,6 +167,8 @@ object VNSApp extends Logging {
       case "densitymass" => DensityMass
       case "conductance" => Conductance
       case "modularity" => Modularity
+      case "densesubgraph" => DenseSubgraph
+      case "triangledensestsubgraph" => TriangleDensestSubgraph
       case _ =>
           throw new RuntimeException(s"Invalid objective function: ${args(5)}")
     }
