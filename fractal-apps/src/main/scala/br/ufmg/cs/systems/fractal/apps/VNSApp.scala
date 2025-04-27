@@ -68,7 +68,7 @@ object DensityMass extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
     else if (subgraphNumVertices > 2) {
       cost = (2.0 * numEdges) / (subgraphNumVertices * (subgraphNumVertices - 1))
     }
-    // else getCost remains 0.0 (for 0 or 1 vertices)
+    // else cost remains 0.0 (for 0 or 1 vertices)
 
     cost
   }
