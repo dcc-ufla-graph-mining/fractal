@@ -111,7 +111,7 @@ object Modularity extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
     val vcur = subgraph.getAdjLists.keySet().cursor()
     while (vcur.moveNext()) {
       val u = vcur.elem()
-      sumDegreesSubgraph += subgraph.vertexDegree(u)
+      sumDegreesSubgraph += graph.vertexDegree(u)
     }
 
     (1 / (2*graphEdges).toDouble) * (2*internalEdges - ((sumDegreesSubgraph*sumDegreesSubgraph) / (2*graphEdges).toDouble))
@@ -128,7 +128,7 @@ object DenseSubgraph extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
 object TriangleDensestSubgraph extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
   override def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
     var numTriangles = 0L
-    val adjLists = subgraph.getAdjLists()
+    val adjLists = subgraph.getAdjLists
     val cur: IntObjCursor[IntIntMap] = adjLists.cursor()
     while (cur.moveNext()) {
       val u = cur.key()
