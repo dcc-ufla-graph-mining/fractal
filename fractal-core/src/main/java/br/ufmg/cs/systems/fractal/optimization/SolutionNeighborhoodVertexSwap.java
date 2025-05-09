@@ -6,8 +6,6 @@ import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
     private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
     private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
@@ -45,8 +43,10 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
                 if (vertex != vertexToRemove) {
                     subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
                     int neighborhoodSize = vertexNeighborhood.size();
+                    int neighborsIndex = VNSSubgraphOptimization.getRandomInt(neighborhoodSize);    // Get a random initial index
+
                     for (int i = 0; i < neighborhoodSize; i++) {
-                        int neighborToAdd = vertexNeighborhood.get(i);
+                        int neighborToAdd = vertexNeighborhood.get(neighborsIndex);
 
                         // Check if the neighbor it is not in the subgraph and add it
                         if (!adjLists.containsKey(neighborToAdd)) {
@@ -59,6 +59,13 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
                             } else {
                                 subgraph.removeVertex(neighborToAdd, initialCost);
                             }
+                        }
+
+                        // Update neighbors index
+                        if(neighborsIndex < neighborhoodSize - 1) {
+                            neighborsIndex++;
+                        } else {
+                            neighborsIndex = 0;
                         }
                     }
                 }
@@ -81,14 +88,14 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
 
         // Get a random vertex to be removed
         int numNonArticulation = nonArticulationVertices.size();
-        int randomVertexToRemoveIndex = ThreadLocalRandom.current().nextInt(0, numNonArticulation);
+        int randomVertexToRemoveIndex = VNSSubgraphOptimization.getRandomInt(numNonArticulation);
         IntCursor cur = nonArticulationVertices.cursor();
         for (int i = 0; i <= randomVertexToRemoveIndex; i++) {
             cur.moveNext();
         }
         int randomVertexToRemove = cur.elem();
 
-        int count = 0;  // Variable that count the number of attempts to find a random vertex used to prevent loops
+        int count = 0;  // Variable that counts the number of attempts to find a random vertex used to prevent loops
         int maxIterations = 1000;   // Max number of random vertex to generate
         boolean verticesSwapped = false;
         IntArrayListView vertexNeighborhood = new IntArrayListView();
@@ -99,7 +106,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             count++;
 
             // Get a random vertex from the subgraph
-            int randomSubgraphVertexIndex = ThreadLocalRandom.current().nextInt(0, numSubgraphVertices);
+            int randomSubgraphVertexIndex = VNSSubgraphOptimization.getRandomInt(numSubgraphVertices);
             int randomSubgraphVertex = subgraphVertices.get(randomSubgraphVertexIndex);
 
             // Checks if the random vertex it is not the vertex to be removed to avoid disconnecting the subgraph
@@ -113,7 +120,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             if(numNeighbors == 0) {
                 continue;
             }
-            int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
+            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(numNeighbors);
             int randomNeighborToAdd = vertexNeighborhood.get(randomNeighborIndex);
 
             // Checks if the random neighbor it is not the vertex to be removed
@@ -138,7 +145,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
 
             // Get a random neighbor that are not in the subgraph
             int neighborsSize = neighborsNotInSubgraph.size();
-            int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, neighborsSize);
+            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(neighborsSize);
             int randomNeighborToAdd = neighborsNotInSubgraph.get(randomNeighborIndex);
 
             subgraph.swapVertices(randomVertexToRemove, randomNeighborToAdd);   // Swap vertices

@@ -4,7 +4,6 @@ import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
     private  IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
@@ -15,20 +14,25 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         adjLists = subgraph.getAdjLists();
         double initialCost = subgraph.getCost();
 
-        // Get the keys of the vertices of the subgraph
+        // Get the keys of the vertices in the subgraph
         if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
             return false;
         }
 
         IntArrayListView vertexNeighborhood = new IntArrayListView();
 
-        // For each subgraph vertex, try to add his neighbors to improve the cost
-        for (int i = 0; i < subgraphVertices.size(); i++) {
+        int numSubgraphVertices = subgraphVertices.size();
+        IntArrayList indices = new IntArrayList();
+
+        // For each vertex in the subgraph, try to add its neighbors to improve the cost
+        for (int i = 0; i < numSubgraphVertices; i++) {
             int vertex = subgraphVertices.get(i);
             subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
+            int numNeighbors = vertexNeighborhood.size();
+            int neighborsIndex = VNSSubgraphOptimization.getRandomInt(numNeighbors) ; // Generate a random initial index
 
-            for (int j = 0; j < vertexNeighborhood.size(); j++) {
-                int neighbor = vertexNeighborhood.get(j);
+            for (int j = 0; j < numNeighbors; j++) {
+                int neighbor = vertexNeighborhood.get(neighborsIndex);
                 if (!adjLists.containsKey(neighbor)) {
                     subgraph.addVertex((neighbor));
 
@@ -38,6 +42,13 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                         return true;
                     } else {
                         subgraph.removeVertex(neighbor, initialCost);
+                    }
+
+                    // Update neighbors index
+                    if(neighborsIndex < numNeighbors - 1) {
+                        neighborsIndex++;
+                    } else {
+                        neighborsIndex = 0;
                     }
                 }
             }
@@ -64,7 +75,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             count++;
 
             // Get a random vertex from the subgraph
-            int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numVertices);
+            int randomVertexIndex = VNSSubgraphOptimization.getRandomInt(numVertices);
             int randomVertex = subgraphVertices.get(randomVertexIndex);
 
             // Get a random randomNeighbor from the random vertex neighborhood
@@ -73,7 +84,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             if (numNeighbors == 0) {
                 continue;
             }
-            int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, numNeighbors);
+            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(numNeighbors);
             int randomNeighbor = neighborhood.get(randomNeighborIndex);
 
             // Verifies if the randomNeighbor is not in the subgraph
@@ -91,9 +102,9 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                 return;
             }
 
-            // Get a random neighbor that are not in the subgraph
+            // Get a random neighbor not in the subgraph
             int neighborsSize = neighborsNotInSubgraph.size();
-            int randomNeighborIndex = ThreadLocalRandom.current().nextInt(0, neighborsSize);
+            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(neighborsSize);
             int neighbor = neighborsNotInSubgraph.get(randomNeighborIndex);
 
             subgraph.addVertex(neighbor);    // Add the random neighbor vertex

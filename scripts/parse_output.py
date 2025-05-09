@@ -4,7 +4,7 @@ logfile = sys.argv[1]
 
 # first pass: compute subgraphs and subgraph IDs
 last_subgraph_per_run = dict()
-n_steps_per_run = dict()
+n_steps_per_run = dict()    
 subgraph_to_cost_nvertices_nedges = dict()
 with open(logfile, 'r') as f:
     for line in f:

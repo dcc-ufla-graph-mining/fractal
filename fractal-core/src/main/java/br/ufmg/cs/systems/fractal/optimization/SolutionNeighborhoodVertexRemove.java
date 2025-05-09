@@ -5,8 +5,6 @@ import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
    private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
    private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
@@ -50,7 +48,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
       // Generate a random vertex index
       int numVertices = nonArticulationVertices.size();
-      int randomVertexIndex = ThreadLocalRandom.current().nextInt(0, numVertices);
+      int randomVertexIndex = VNSSubgraphOptimization.getRandomInt(numVertices);
 
       // Get the random vertex to be removed
       IntCursor cur = nonArticulationVertices.cursor();
