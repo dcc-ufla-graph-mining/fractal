@@ -10,6 +10,7 @@ import com.koloboke.collect.map.hash.HashIntIntMaps;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
+import java.util.Random;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -153,8 +154,8 @@ public class VNSSubgraphOptimization implements Logging {
    }
 
    /**
-    * Calls tarjan method to get the non-articulation point vertices and sort the array
-    * @param nonArticulationVertices array to store the non articulation vertices
+    * Calls tarjan method to get the non-articulation point vertices
+    * @param nonArticulationVertices array to store the non-articulation vertices
     * @param adjLists adjacency lists of the subgraph vertices
     * @return true if there are any non-articulation vertices, or false otherwise
     */
@@ -169,14 +170,14 @@ public class VNSSubgraphOptimization implements Logging {
       if(nonArticulationVertices.isEmpty())
          return false;
 
-      nonArticulationVertices.sort();  // Ordering the array
+      //nonArticulationVertices.sort();  // Ordering the array
 
       return true;
    }
 
    /**
     * Get the keys of all vertices of the subgraph
-    * @param subgraphVertices array to store the keys of the subgraph vertices in ID order
+    * @param subgraphVertices array to store the keys of the subgraph vertices
     * @param adjLists adjacency lists of the subgraph vertices
     * @return true if there are any vertices in the subgraph, or false otherwise
     */
@@ -191,6 +192,8 @@ public class VNSSubgraphOptimization implements Logging {
          int vertex = cur.key();
          subgraphVertices.add(vertex);
       }
+
+      subgraphVertices.shuffle();
 
       return true;
    }
@@ -273,6 +276,17 @@ public class VNSSubgraphOptimization implements Logging {
       }
 
       return visited.size() == size;
+   }
+
+   /**
+    * Generates a pseudorandom integer between 0 (inclusive) and the given bound (exclusive)
+    * @param bound the upper bound (exclusive)
+    * @return random integer in the range [0, bound)
+    */
+   public static int getRandomInt(int bound) {
+      Random r = new Random();
+      int randomInt = r.nextInt(bound);
+      return randomInt;
    }
 
 }
