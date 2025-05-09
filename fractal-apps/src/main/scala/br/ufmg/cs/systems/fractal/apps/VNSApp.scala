@@ -6,6 +6,7 @@ import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
 import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexKAdd, SolutionNeighborhoodVertexKRemove, SolutionNeighborhoodVertexKSwap, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
+import com.koloboke.collect.map.hash.HashIntIntMaps
 import com.koloboke.collect.map.{IntIntMap, IntObjCursor}
 import org.apache.spark.SparkContext.jarOfObject
 import org.apache.spark.{SparkConf, SparkContext}
@@ -149,6 +150,38 @@ object TriangleDensestSubgraph extends ToDoubleFunction[VertexInducedOptimizatio
   }
 }
 
+class DegreeEntropy extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
+  private lazy val degreeSumMap: IntIntMap = HashIntIntMaps.newMutableMap()
+
+  private def log2(v: Double): Double = {
+    Math.log(v) / Math.log(2)
+  }
+
+  override def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
+    // degree sums count
+    degreeSumMap.clear()
+    val adjacencyList = subgraph.getAdjLists
+    val numVertices = adjacencyList.size()
+    val cur = adjacencyList.cursor()
+    while (cur.moveNext()){
+      val k = cur.value().size()
+      val c = degreeSumMap.getOrDefault(k, 0)
+      degreeSumMap.put(k, c + 1)
+    }
+
+    var entropy = 0.0
+    val dcur = degreeSumMap.cursor()
+    while (dcur.moveNext()) {
+      // val k = dcur.key()
+      val c = dcur.value()
+      val p = c / numVertices.toDouble
+      entropy = entropy - (p * log2(p))
+    }
+    entropy
+  }
+
+}
+
 object VNSApp extends Logging {
   def main(args: Array[String]): Unit = {
     // environment setup (Spark)
@@ -169,6 +202,7 @@ object VNSApp extends Logging {
       case "modularity" => Modularity
       case "densesubgraph" => DenseSubgraph
       case "triangledensestsubgraph" => TriangleDensestSubgraph
+      case "degreeentropy" => new DegreeEntropy
       case _ =>
           throw new RuntimeException(s"Invalid objective function: ${args(5)}")
     }
