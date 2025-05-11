@@ -2,6 +2,7 @@ package br.ufmg.cs.systems.fractal.optimization;
 
 import br.ufmg.cs.systems.fractal.util.Logging;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
+import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjCursor;
@@ -94,12 +95,12 @@ public class VNSSubgraphOptimization implements Logging {
    }
 
    // DFS used to run the Tarjan method
-   private static int dfsTarjan(int u, int p, IntIntMap low, IntIntMap disc, IntObjMap<IntIntMap> adjLists, IntArrayList nonArticulationVertices, int[] timeTarjan) {
-      int children = 0;                      // Count of children in DFS tree
+   private static int dfsTarjan(int u, int p, IntIntMap low, IntIntMap disc, IntObjMap<IntIntMap> adjLists, IntSet nonArticulationVertices, int[] timeTarjan) {
+      int children = 0;                         // Count of children in a DFS tree
       low.put(u, timeTarjan[0]);                // Initialize discovery low value
       disc.put(u, timeTarjan[0]);               // Initialize discovery time
       timeTarjan[0]++;                          // Increasing dfs time
-      boolean isArticulation = false;  // Stores whether a vertex is an articulation point
+      boolean isArticulation = false;           // Stores whether a vertex is an articulation point
 
       // Iterating through the adjacency list of vertex (u)
       IntIntMap adjList = adjLists.get(u);
@@ -124,7 +125,7 @@ public class VNSSubgraphOptimization implements Logging {
             low.put(u, Math.min(low.get(u), disc.get(v)));
       }
 
-      // Add (u) to the set of non articulation vertices
+      // Add (u) to the set of non-articulation vertices
       if(!isArticulation && u != p)
          nonArticulationVertices.add(u);
 
@@ -134,7 +135,7 @@ public class VNSSubgraphOptimization implements Logging {
    /**
    * Tarjan algorithm used to get the non-articulation points
    */
-   private static void tarjan(IntObjMap<IntIntMap> adjLists, IntArrayList nonArticulationVertices) {
+   private static void tarjan(IntObjMap<IntIntMap> adjLists, IntSet nonArticulationVertices) {
       IntIntMap low, disc;
 
       // Initializing auxiliary structures
@@ -159,20 +160,14 @@ public class VNSSubgraphOptimization implements Logging {
     * @param adjLists adjacency lists of the subgraph vertices
     * @return true if there are any non-articulation vertices, or false otherwise
     */
-   public static boolean getNonArticulationVertices(IntArrayList nonArticulationVertices, IntObjMap<IntIntMap> adjLists) {
+   public static boolean getNonArticulationVertices(IntSet nonArticulationVertices, IntObjMap<IntIntMap> adjLists) {
       if(adjLists == null || adjLists.isEmpty())
          return false;
 
       nonArticulationVertices.clear();
       tarjan(adjLists, nonArticulationVertices);      // Executing Tarjan algorithm to get the non-articulation vertices
 
-      // Checks if there is no non articulation point vertices
-      if(nonArticulationVertices.isEmpty())
-         return false;
-
-      //nonArticulationVertices.sort();  // Ordering the array
-
-      return true;
+      return !nonArticulationVertices.isEmpty();
    }
 
    /**
@@ -181,7 +176,7 @@ public class VNSSubgraphOptimization implements Logging {
     * @param adjLists adjacency lists of the subgraph vertices
     * @return true if there are any vertices in the subgraph, or false otherwise
     */
-   public static boolean getSubgraphVertices(IntArrayList subgraphVertices, IntObjMap<IntIntMap> adjLists) {
+   public static boolean getSubgraphVertices(IntSet subgraphVertices, IntObjMap<IntIntMap> adjLists) {
       if(adjLists == null || adjLists.isEmpty())
          return false;
 
@@ -192,8 +187,6 @@ public class VNSSubgraphOptimization implements Logging {
          int vertex = cur.key();
          subgraphVertices.add(vertex);
       }
-
-      subgraphVertices.shuffle();
 
       return true;
    }
@@ -207,25 +200,22 @@ public class VNSSubgraphOptimization implements Logging {
     * @param subgraphVertices array that contains all the keys of the subgraph vertices
     * @return true if there are any neighbors that is not already in the subgraph, false otherwise
     */
-   public static boolean getSubgraphNeighbors(VertexInducedOptimizationSubgraph subgraph, IntObjMap<IntIntMap> adjLists, IntArrayList subgraphNeighborhood, IntArrayList subgraphVertices) {
+   public static boolean getSubgraphNeighbors(VertexInducedOptimizationSubgraph subgraph, IntObjMap<IntIntMap> adjLists, IntSet subgraphNeighborhood, IntSet subgraphVertices, IntArrayListView vertexNeighborhood) {
       if(subgraphVertices == null || subgraphVertices.isEmpty())
          return false;
 
       subgraphNeighborhood.clear();
-      IntSet setNeighborhood = HashIntSets.newMutableSet();   // Set used to quickly access each vertex key in the array
-      IntArrayListView vertexNeighborhood = new IntArrayListView();
-      int numSubgraphVertices = subgraphVertices.size();
 
       // Get all neighbors of the subgraph vertices
-      for (int i = 0; i < numSubgraphVertices; i++) {
-         int vertex = subgraphVertices.get(i);
+      IntCursor cur = subgraphVertices.cursor();
+      while(cur.moveNext()) {
+         int vertex = cur.elem();
          subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
          int numNeighbors = vertexNeighborhood.size();
 
          for (int j = 0; j < numNeighbors; j++) {
             int neighbor = vertexNeighborhood.get(j);
-            if (!setNeighborhood.contains(neighbor) && !adjLists.containsKey(neighbor)) {
-               setNeighborhood.add(neighbor);
+            if (!subgraphNeighborhood.contains(neighbor) && !adjLists.containsKey(neighbor)) {
                subgraphNeighborhood.add(neighbor);
             }
          }

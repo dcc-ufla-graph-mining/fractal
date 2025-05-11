@@ -4,10 +4,12 @@ import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
+import com.koloboke.collect.set.IntSet;
+import com.koloboke.collect.set.hash.HashIntSets;
 
 public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
    private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
-   private final IntArrayList nonArticulationVertices = new IntArrayList(); // ArrayList containing the non articulation vertices of the subgraph
+   private final IntSet nonArticulationVertices = HashIntSets.newMutableSet(); // List containing the non-articulation vertices of the subgraph
 
    @Override
    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
