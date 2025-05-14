@@ -216,7 +216,7 @@ object VNSApp extends Logging {
 
     val startTimeMs = System.currentTimeMillis()
 
-    val numThreads = if (fgraph.numPartitions > numSamples) 1 else fgraph.numPartitions
+    val numThreads = Math.min(fgraph.numPartitions, numSamples)
     val samplesPerThread = Math.max(numSamples / numThreads, 1)
     val subgraphs = fgraph
       .set("samples_per_thread", samplesPerThread)
