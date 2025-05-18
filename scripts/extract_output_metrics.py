@@ -1,3 +1,7 @@
+# !/usr/bin/env python3
+# Extracts experiment metrics from log files and saves them to a CSV.
+# Usage: python extract_output_metrics.py <directory_path>
+
 import sys
 import re
 import os
@@ -7,10 +11,12 @@ from collections import deque
 from datetime import datetime
 
 def extract_repetition_number(filename):
+    """Extracts experiment repetition number from filename."""
     match = re.search(r'_(\d+)\.(?:txt|log)(?:\.gz)?$', filename)
     return int(match.group(1)) if match else 0
 
 def extract_experiment_parameters(logfile):
+    """Extracts experiment parameters from log file headers."""
     params = {
         'graph_name': None,
         'initial_vertices': None,
@@ -21,11 +27,13 @@ def extract_experiment_parameters(logfile):
         'repetition': extract_repetition_number(logfile)
     }
 
+    # Handle both regular and gzipped files
     open_func = gzip.open if logfile.endswith('.gz') else open
     mode = 'rt'
 
     with open_func(logfile, mode) as f:
         for line in f:
+            # Extract command line arguments
             if "args is set to '" in line:
                 args_match = re.search(r"args is set to '([^']+)'", line)
                 if args_match:
@@ -37,6 +45,7 @@ def extract_experiment_parameters(logfile):
                         params['timeout_ms'] = int(args[4])
                         params['objective_function'] = args[5]
 
+            # Extract thread count
             if "--executor-cores" in line:
                 threads_match = re.search(r"--executor-cores\s+(\d+)", line)
                 if threads_match:
@@ -45,38 +54,41 @@ def extract_experiment_parameters(logfile):
     return params
 
 def parse_timestamp(line):
+    """Parses timestamp from log line (format: DD/MM/YY HH:MM:SS)."""
     match = re.match(r"(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})", line)
     if match:
         try:
             return datetime.strptime(match.group(1), "%d/%m/%y %H:%M:%S")
-        except Exception as e:
-            print(f"Failed to parse timestamp: {match.group(1)} – {e}")
+        except ValueError:
+            return None
     return None
 
 def process_log_file(logfile):
-    print(f"\n--- Processing file: {logfile} ---")
+    """Processes a single log file and extracts key metrics."""
     params = extract_experiment_parameters(logfile)
     best_subgraph = None
     total_time_ms = None
     effective_runs = None
     time_to_best_ms = None
 
+    # Read all lines at once for efficient processing
     open_func = gzip.open if logfile.endswith('.gz') else open
     mode = 'rt'
-
     with open_func(logfile, mode) as f:
         lines = list(f)
 
+    # Extract metrics from the last few lines
     last_lines = deque(lines, maxlen=5)
-    last_lines = list(last_lines)
     if len(last_lines) >= 2:
         penultimate_line = last_lines[-2].strip()
         last_line = last_lines[-1].strip()
 
+        # Get number of effective runs
         match = re.search(r'VNSSubgraphOptimization\s+(\d+)', penultimate_line)
         if match:
             effective_runs = int(match.group(1)) + 1
 
+        # Extract best solution metrics
         if "BestSubgraph" in last_line or "VNSSubgraphOptimization" in last_line:
             time_match = re.search(r'ElapsedTimeMs=(\d+)', last_line)
             if time_match:
@@ -92,6 +104,7 @@ def process_log_file(logfile):
                     'cost': best_cost
                 }
 
+    # Calculate time to best solution
     first_vns_time = None
     best_cost_time = None
 
@@ -99,25 +112,21 @@ def process_log_file(logfile):
         if 'VNSSubgraphOptimization' in line:
             timestamp = parse_timestamp(line)
 
+            # Record first VNS timestamp
             if not first_vns_time:
                 first_vns_time = timestamp
-                print(f"DEBUG 1/4: Initial time extracted: {first_vns_time}")
 
+            # Find first occurrence of best cost
             if best_subgraph and 'cost' in best_subgraph:
                 cost_match = re.search(r'cost=([\d.]+)', line) or re.search(r'(\d+\.\d+)$', line)
                 if cost_match and abs(float(cost_match.group(1)) - best_subgraph['cost']) < 1e-9:
                     best_cost_time = timestamp
-                    print(f"DEBUG 2/4: First best cost appearance: {best_cost_time}")
                     break
 
-    print(f"DEBUG 3/4: Best cost time is: {best_cost_time}")
-
+    # Calculate time difference if both timestamps were found
     if first_vns_time and best_cost_time:
         delta = best_cost_time - first_vns_time
         time_to_best_ms = int(delta.total_seconds() * 1000)
-        print(f"DEBUG 4/4: Time difference: {time_to_best_ms}ms (from {first_vns_time} to {best_cost_time})")
-    else:
-        print("DEBUG 4/4: Missing timestamps for calculation")
 
     return {
         **params,
@@ -131,6 +140,7 @@ def process_log_file(logfile):
     }
 
 def process_directory(directory_path):
+    """Processes all log files in a directory and generates CSV output."""
     all_results = []
     for filepath in glob.glob(os.path.join(directory_path, '**', '*.txt*'), recursive=True):
         if filepath.endswith(('.txt', '.txt.gz')):
@@ -144,6 +154,7 @@ def process_directory(directory_path):
         print("No valid log files found in directory")
         return
 
+    # Define CSV output structure
     output_file = "experiments_results.csv"
     fields = [
         ('graph_name', 'Graph Name'),
@@ -162,8 +173,8 @@ def process_directory(directory_path):
         ('best_solution', 'Best Solution')
     ]
 
+    # Write results to CSV (append if file exists)
     file_exists = os.path.isfile(output_file)
-
     with open(output_file, 'a' if file_exists else 'w') as f:
         if not file_exists:
             f.write(','.join([header for _, header in fields]) + '\n')
@@ -172,7 +183,7 @@ def process_directory(directory_path):
             row = [str(result.get(field, '')) for field, _ in fields]
             f.write(','.join(row) + '\n')
 
-    print(f"\nResults {'appended to' if file_exists else 'saved to'}: {os.path.abspath(output_file)}")
+    print(f"Results {'appended to' if file_exists else 'saved to'}: {os.path.abspath(output_file)}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
