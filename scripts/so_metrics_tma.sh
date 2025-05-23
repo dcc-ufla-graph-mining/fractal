@@ -6,8 +6,8 @@ PREFIX="$1"
 PID=$(pgrep -f "SparkSubmit" | head -n 1)
 
 if [ -z "$PID" ]; then
-    echo "SparkSubmit process not found."
-    exit 1
+  echo "SparkSubmit process not found."
+  exit 1
 fi
 
 echo "Monitoring SparkSubmit (PID=$PID) until exit"
@@ -20,6 +20,6 @@ FBASE="${OUTDIR}/${PREFIX:+${PREFIX}_}"
 OUTFILE="${FBASE}tma_${PID}.txt"
 
 # Run perf stat with TopdownL1 metrics, output redirected to file
-perf stat -p "$PID" -M TopdownL1 > "$OUTFILE" 2>&1
+perf stat -p "$PID" >"$OUTFILE" 2>&1
 
 echo "Perf stat output saved to $OUTFILE"
