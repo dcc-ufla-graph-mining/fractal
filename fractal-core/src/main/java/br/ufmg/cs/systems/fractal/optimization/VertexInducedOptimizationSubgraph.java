@@ -284,7 +284,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(numEdges);
       sb.append(",update=").append(this.updateString);
       sb.append(",cost=");
-      sb.append(String.format("%f", cost));
+      sb.append(cost);
       sb.append(")");
       return sb.toString();
    }
@@ -297,7 +297,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       sb.append(numEdges);
       sb.append(",vertices={").append(getStringVertices()).append("}");
       sb.append(",cost=");
-      sb.append(String.format("%f", cost));
+      sb.append(cost);
       sb.append(")");
       return sb.toString();
    }

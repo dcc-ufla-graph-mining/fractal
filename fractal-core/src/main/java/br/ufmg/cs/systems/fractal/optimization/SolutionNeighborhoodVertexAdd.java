@@ -31,7 +31,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
             int numNeighbors = vertexNeighborhood.size();
 
-            int neighborsOffset = VNSSubgraphOptimization.getRandomInt(numNeighbors);   // Generate a random offset to the neighbor index
+            int neighborsOffset = VNSSubgraphOptimization.getRandomInt(numNeighbors);   // Generate a random offset for the neighbors indices
             for (int j = 0; j < numNeighbors; j++) {
                 int neighborIndex = (neighborsOffset + j) % numNeighbors;   // Calculate next neighbor index
                 int neighbor = vertexNeighborhood.get(neighborIndex);
