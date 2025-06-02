@@ -13,13 +13,13 @@ fi
 echo "Monitoring SparkSubmit (PID=$PID) until exit"
 echo
 
-OUTDIR="performance_metrics_logs"
+OUTDIR="$HOME/optimization-logs/performance_metrics_logs"
 mkdir -p "$OUTDIR"
 
 FBASE="${OUTDIR}/${PREFIX:+${PREFIX}_}"
 OUTFILE="${FBASE}tma_${PID}.txt"
 
 # Run perf stat with TopdownL1 metrics, output redirected to file
-perf stat -p "$PID" >"$OUTFILE" 2>&1
+perf stat -a "$PID" >"$OUTFILE" 2>&1
 
 echo "Perf stat output saved to $OUTFILE"

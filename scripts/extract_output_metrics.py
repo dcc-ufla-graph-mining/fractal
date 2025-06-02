@@ -1,4 +1,4 @@
-# !/usr/bin/env python3
+#!/usr/bin/env python3
 # Extracts experiment metrics from log files and saves them to a CSV.
 # Usage: python extract_output_metrics.py <directory_path>
 
@@ -41,7 +41,7 @@ def extract_experiment_parameters(logfile):
                     if len(args) >= 6:
                         params['graph_name'] = os.path.basename(args[0].rstrip('/'))
                         params['initial_vertices'] = int(args[1])
-                        params['num_initial_solutions'] = int(args[2])
+                        params['num_initial_solutions'] = args[2]
                         params['timeout_ms'] = int(args[4])
                         params['objective_function'] = args[5]
 
@@ -68,7 +68,6 @@ def process_log_file(logfile):
     params = extract_experiment_parameters(logfile)
     best_subgraph = None
     total_time_ms = None
-    effective_runs = None
     time_to_best_ms = None
 
     # Read all lines at once for efficient processing
@@ -78,18 +77,12 @@ def process_log_file(logfile):
         lines = list(f)
 
     # Extract metrics from the last few lines
-    last_lines = deque(lines, maxlen=5)
+    last_lines = deque(lines, maxlen=3)
     if len(last_lines) >= 2:
-        penultimate_line = last_lines[-2].strip()
         last_line = last_lines[-1].strip()
 
-        # Get number of effective runs
-        match = re.search(r'VNSSubgraphOptimization\s+(\d+)', penultimate_line)
-        if match:
-            effective_runs = int(match.group(1)) + 1
-
         # Extract best solution metrics
-        if "BestSubgraph" in last_line or "VNSSubgraphOptimization" in last_line:
+        if "BestSubgraph" in last_line:
             time_match = re.search(r'ElapsedTimeMs=(\d+)', last_line)
             if time_match:
                 total_time_ms = int(time_match.group(1))
@@ -99,29 +92,40 @@ def process_log_file(logfile):
                 best_cost = float(cost_match.group(1))
                 best_subgraph = {
                     'line': last_line.split('BestSubgraph=')[1].strip() if "BestSubgraph" in last_line else last_line,
-                    'nvertices': int(re.search(r'nvertices=(\d+)', last_line).group(1)) if "nvertices" in last_line else 0,
-                    'nedges': int(re.search(r'nedges=(\d+)', last_line).group(1)) if "nedges" in last_line else 0,
+                    'nvertices': int(re.search(r'nvertices=(\d+)', last_line).group(1)) if "nvertices" in last_line else -1,
+                    'nedges': int(re.search(r'nedges=(\d+)', last_line).group(1)) if "nedges" in last_line else -1,
                     'cost': best_cost
                 }
 
-    # Calculate time to best solution
+    # Calculate time to the best solution and the number of effective runs
     first_vns_time = None
     best_cost_time = None
+    effective_runs = -1
+    best_cost_found = False
 
     for line in lines:
         if 'VNSSubgraphOptimization' in line:
-            timestamp = parse_timestamp(line)
 
-            # Record first VNS timestamp
-            if not first_vns_time:
-                first_vns_time = timestamp
+            # Extract and update the highest run number
+            run_match = re.search(r'VNSSubgraphOptimization\s+(\d+)', line)
+            if run_match:
+                current_run = int(run_match.group(1))
+                if current_run > effective_runs:
+                    effective_runs = current_run
 
-            # Find first occurrence of best cost
-            if best_subgraph and 'cost' in best_subgraph:
-                cost_match = re.search(r'cost=([\d.]+)', line) or re.search(r'(\d+\.\d+)$', line)
-                if cost_match and abs(float(cost_match.group(1)) - best_subgraph['cost']) < 1e-9:
-                    best_cost_time = timestamp
-                    break
+            if not best_cost_found:
+                # Record first VNS timestamp
+                if not first_vns_time:
+                    first_vns_time = parse_timestamp(line)
+
+                # Find first occurrence of best cost
+                if best_subgraph and 'cost' in best_subgraph:
+                    cost_match = re.search(r'cost=([\d.]+)', line) or re.search(r'(\d+\.\d+)$', line)
+                    if cost_match and abs(float(cost_match.group(1)) - best_subgraph['cost']) < 1e-9:
+                        best_cost_time = parse_timestamp(line)
+                        best_cost_found = True
+
+    effective_runs+=1
 
     # Calculate time difference if both timestamps were found
     if first_vns_time and best_cost_time:
@@ -132,7 +136,7 @@ def process_log_file(logfile):
         **params,
         'total_time_ms': total_time_ms,
         'time_to_best_solution_ms': time_to_best_ms,
-        'effective_runs': effective_runs if effective_runs is not None else 0,
+        'effective_runs': effective_runs if effective_runs is not None else "0",
         'cost_best_solution': best_subgraph['cost'] if best_subgraph else None,
         'vertices_best_solution': best_subgraph['nvertices'] if best_subgraph else None,
         'edges_best_solution': best_subgraph['nedges'] if best_subgraph else None,
