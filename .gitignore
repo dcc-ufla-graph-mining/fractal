@@ -3,3 +3,5 @@ build
 .gradle
 fractal-core/build
 fractal-apps/build
+plots/*.csv
+plots/.ipynb_checkpoints

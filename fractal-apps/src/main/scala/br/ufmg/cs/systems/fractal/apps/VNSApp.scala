@@ -122,7 +122,7 @@ object Modularity extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
 
 object DenseSubgraph extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
   override def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
-    subgraph.getNumEdges / subgraph.getNumVertices.toDouble
+    subgraph.getNumEdges / subgraph.getNumVertices.toDouble 
   }
 }
 

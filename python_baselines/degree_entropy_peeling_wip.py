@@ -2,6 +2,7 @@ import os
 import networkx as nx
 import time
 import numpy as np
+import math
 
 def load_custom_graph(graph_dir):
     """
@@ -51,69 +52,94 @@ if __name__ == '__main__':
     print(f"ReadGraphElapsedSeconds {elapsed}")
 
     start = time.time()
-    triangle_counts = np.zeros(G.number_of_nodes(), dtype=int)
-    max_num_triangles = 0
-    total_num_triangles = 0
+    node_degrees = np.zeros(G.number_of_nodes(), dtype=int)
+    max_node_degree = 0
     for u in G.nodes():
-        num_triangles = nx.triangles(G, u)
-        triangle_counts[u] = num_triangles
-        total_num_triangles += num_triangles
-        if num_triangles > max_num_triangles:
-            max_num_triangles = num_triangles
+        degree = nx.degree(G, u)
+        node_degrees[u] = degree
+        if degree > max_node_degree:
+            max_node_degree = degree
 
     elapsed = time.time() - start
-    print(f"CountTrianglesElapsedSeconds {elapsed}")
 
-    print("max_num_triangles", max_num_triangles)
+    print(f"GetNodeDegreesElapsedSeconds {elapsed}")
 
     start = time.time()
-    buckets = [None] * (max_num_triangles + 1)
+    num_nodes_per_degree = {}
+    for u in G.nodes():
+        degree = node_degrees[u]
+        num_nodes_per_degree[degree] = num_nodes_per_degree.get(degree, 0) + 1
+    current_entropy = 0
+    for count in num_nodes_per_degree:
+        if count == 0: continue
+        p = count / G.number_of_nodes()
+        current_entropy = current_entropy - (p * math.log2(p))
+    elapsed = time.time() - start
+    print(f"InitialDegreeEntropy {current_entropy}")
+    print(f"GetNumNodesPerDegreeElapsedSeconds {elapsed}")
+
+    # priority is lower bound on degree count produced from removal (larger priority first)
+    def node_priority(G, u, node_degrees, num_nodes_per_degree):
+        u_degree = node_degrees[u]
+        counts_by_degree = {}
+        counts_by_degree[u_degree] = num_nodes_per_degree[u_degree] - 1
+
+        for v in G[u]:
+            d_before = node_degrees[v]
+            counts_by_degree[d_before] = num_nodes_per_degree[d_before]
+
+        for v in G[u]:
+            d_before = node_degrees[v]
+            d_after = d_before - 1
+            counts_by_degree[d_before] = counts_by_degree.get(d_before, 0) - 1
+            counts_by_degree[d_after] = counts_by_degree.get(d_after, 0) + 1
+
+        delta = 0
+
+        prio = min(counts_by_degree.values())
+
+        return prio
+
+
+    start = time.time()
+    buckets = [None] * (G.number_of_nodes() + 1)
     for c in range(len(buckets)):
         buckets[c] = set()
     for u in G.nodes():
-        buckets[triangle_counts[u]].add(u)
+        prio = node_priority(G, u, node_degrees, num_nodes_per_degree)
+        buckets[prio].add(u)
     elapsed = time.time() - start
     print(f"BuildBucketsElapsedSeconds {elapsed}")
 
     start = time.time()
     min_prio = 0
+    max_prio = G.number_of_nodes()
     num_initial_nodes = G.number_of_nodes()
-    best_score = (total_num_triangles / 3) / num_initial_nodes
+    best_score = 0
     best_num_nodes = num_initial_nodes
     best_num_edges = G.number_of_edges()
 
     while G.number_of_nodes() > 0:
-        while min_prio <= max_num_triangles:
-            b = buckets[min_prio]
+        while max_prio >= min_prio:
+            b = buckets[max_prio]
             if b is not None and len(b) > 0: break
-            min_prio += 1
+            max_prio -= 1
 
         selected_node = b.pop()
+        d = node_degrees[selected_node]
+        num_nodes_per_degree[d] = num_nodes_per_degree[d] - 1
+        node_degrees[selected_node] = 0
 
         neighbors = list(G[selected_node])
-        to_remove_triangles = {}
-        for i in range(len(neighbors)):
-            v = neighbors[i]
-            for j in range(i + 1, len(neighbors)):
-                w = neighbors[j]
-                if G.has_edge(v, w): # one less triangle for v and w
-                    to_remove_triangles[v] = to_remove_triangles.get(v, 0) + 1
-                    to_remove_triangles[w] = to_remove_triangles.get(w, 0) + 1
-                    total_num_triangles -= 3
-
-        for v in to_remove_triangles:
-            num_removed_triangles = to_remove_triangles[v]
-            old_num_triangles = triangle_counts[v]
-            new_num_triangles = old_num_triangles - num_removed_triangles
-            buckets[old_num_triangles].remove(v)
-            buckets[new_num_triangles].add(v)
-            triangle_counts[v] = new_num_triangles
-            if new_num_triangles < min_prio:
-                min_prio = new_num_triangles
+        for v in G[selected_node]: # update
+            d_before = node_degrees[v]
+            d_after = d_before - 1
+            num_nodes_per_degree[d_before] = num_nodes_per_degree[d_before] - 1
+            num_nodes_per_degree[d_after] = num_nodes_per_degree.get(d_after, 0) + 1
+            node_degrees[v] = d_after
 
         G.remove_node(selected_node)
-        score = (total_num_triangles / 3) / G.number_of_nodes() \
-            if G.number_of_nodes() > 0 else 0
+        score = 0
         if score > best_score:
             best_score = score
             best_num_nodes = G.number_of_nodes()
@@ -121,7 +147,7 @@ if __name__ == '__main__':
 
         if G.number_of_nodes() % 1000 == 0:
             print("CurrentNumNodes:", G.number_of_nodes(),
-                  "CurrentPriority:", min_prio,
+                  "CurrentPriority:", max_prio,
                   "CurrentScore:", score,
                   "BestScore:", best_score,
                   "BestNumNodes:", best_num_nodes,
