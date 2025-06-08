@@ -14,8 +14,13 @@ objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "labelentropy" 
 repeats=5 # Number of times to repeat each run
 
 # Define graph name and directory
+<<<<<<< HEAD
 graphDir="$HOME/graphs-data/citeseer"
 graphName="citeseer"
+=======
+graphDir="$HOME/graphs-data/patents"
+graphName="patents"
+>>>>>>> ed77dc9 (scripts corrections)
 
 # Loop through all combinations
 for ((core=cores_lower; core<=$cores_upper; core++)); do
