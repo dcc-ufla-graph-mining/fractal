@@ -13,11 +13,8 @@ fi
 echo "Monitoring SparkSubmit (PID=$PID) until exit"
 echo
 
-<<<<<<< HEAD
 OUTDIR="$HOME/optimization-logs/performance_metrics_logs"
-=======
-OUTDIR="$HOME/performance_metrics_logs"
->>>>>>> ed77dc9 (scripts corrections)
+
 mkdir -p "$OUTDIR"
 
 FBASE="${OUTDIR}/${PREFIX:+${PREFIX}_}"
