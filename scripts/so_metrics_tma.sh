@@ -21,6 +21,6 @@ FBASE="${OUTDIR}/${PREFIX:+${PREFIX}_}"
 OUTFILE="${FBASE}tma_${PID}.txt"
 
 # Run perf stat with TopdownL1 metrics, output redirected to file
-perf stat -a "$PID" >"$OUTFILE" 2>&1
+perf stat -p "$PID" >"$OUTFILE" 2>&1
 
 echo "Perf stat output saved to $OUTFILE"

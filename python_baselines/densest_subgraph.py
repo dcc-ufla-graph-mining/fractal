@@ -514,7 +514,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
     #best_G, best_r = iteratively_improve_graph(G)
-    best_r, best_G_nodes = densest_subgraph(G, iterations=1, method="fista")
+    best_r, best_G_nodes = densest_subgraph(G, iterations=1, method="greedy++")
     best_G = G.subgraph(best_G_nodes)
     elapsed_time = time.time() - start_time
     print(f"Best ratio achieved: {best_r:.3f}")
