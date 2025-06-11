@@ -95,6 +95,7 @@ if __name__ == '__main__':
     for c in range(len(buckets)):
         buckets[c] = set()
     for u in G.nodes():
+        print('NumTriangles', u, triangle_counts[u])
         buckets[triangle_counts[u]].add(u)
     elapsed = time.time() - start
     print(f"BuildBucketsElapsedSeconds {elapsed}", flush=True)
@@ -109,18 +110,23 @@ if __name__ == '__main__':
 
     while G.number_of_nodes() > 0:
         selected_nodes = set()
-        while min_prio <= 3 * (1 + epsilon) * score and G.number_of_nodes() - len(selected_nodes) > 0:
+        adjusted_average_prio = 3 * (1 + epsilon) * score
+        print('AdjustedAveragePriority', adjusted_average_prio)
+        upper_bound_prio_removed = 0
+        while min_prio <= adjusted_average_prio and G.number_of_nodes() - len(selected_nodes) > 0:
             while min_prio <= max_num_triangles:
                 b = buckets[min_prio]
                 if b is not None and len(b) > 0: break
                 min_prio += 1
 
-            if min_prio <= 3 * (1 + epsilon) * score:
-                #print('add_node', min_prio, 3 * (1 + epsilon) * score)
+            if min_prio <= adjusted_average_prio:
+                upper_bound_prio_removed = min_prio
                 selected_node = b.pop()
                 selected_nodes.add(selected_node)
             else:
                 break
+
+        print('RemovedPriorityUpTo', upper_bound_prio_removed)
 
         for selected_node in selected_nodes:
             neighbors = list(G[selected_node])
@@ -132,8 +138,12 @@ if __name__ == '__main__':
                     if G.has_edge(v, w): # one less triangle for v and w
                         if v not in selected_nodes:
                             to_remove_triangles[v] = to_remove_triangles.get(v, 0) + 1
+                        else:
+                            triangle_counts[v] = None
                         if w not in selected_nodes:
                             to_remove_triangles[w] = to_remove_triangles.get(w, 0) + 1
+                        else:
+                            triangle_counts[w] = None
 
                         total_num_triangles -= 3
 
