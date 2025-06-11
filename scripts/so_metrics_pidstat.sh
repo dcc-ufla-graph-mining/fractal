@@ -15,6 +15,7 @@ echo "Monitoring SparkSubmit (PID=$PID) until it exits or is killed..."
 
 # Output directory
 OUTDIR="$HOME/optimization-logs/performance_metrics_logs"
+
 mkdir -p "$OUTDIR"
 
 # Build output file names with optional prefix

@@ -10,15 +10,15 @@ numInitVertices=(10)
 numInitSolutions=(100 1000)
 seed=(-1)
 timeLimitMs=(1000 2000 3000)
-objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "labelentropy" "triangledensestsubgraph")
+objectiveFunction=("conductance" "densesubgraph" "triangledensestsubgraph" "degreeentropy" "labelentropy")
 repeats=5 # Number of times to repeat each run
 
 # Define graph and log dir
-graphDir="$HOME/graphs-data/dblp"
-graphName="dblp"
-logDir="$HOME/optimization-logs/optimality/temp/dblp"
+graphDir="$HOME/graphs-data/patents"
+graphName="patents"
+outputDir="$HOME/optimization-logs/profiling-logs/patents-logs"
 
-mkdir -p "$logDir"
+mkdir -p "$outputDir"
 
 # Loop through all combinations
 for ((core=cores_lower; core<=$cores_upper; core++)); do
@@ -30,10 +30,10 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
 
                         # Build the args
                         args="$graphDir $vertices $solutions $seed $timeLimit $objFunc"
-                        log_file="$logDir/$graphName-${core}-${vertices}-${solutions}-${timeLimit}-${objFunc}_${run}.txt"
+                        outputFile="${graphName}-${core}-${vertices}-${solutions}-${timeLimit}-${objFunc}_${run}-profiling.txt"
 
                         # Build the full command
-                        full_command="./gradlew jar && master_memory=${memory}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} args=\"$args\" ./bin/fractal-custom-app.sh 2>&1 | tee \"$log_file\"  "
+                        full_command="./gradlew jar && master_memory=${memory}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} event=cpu file=\"$outputDir/$outputFile\" args=\"$args\" ./bin/fractal-custom-app-profiling.sh"
 
                         # Show the command being run
                         echo "$full_command"
