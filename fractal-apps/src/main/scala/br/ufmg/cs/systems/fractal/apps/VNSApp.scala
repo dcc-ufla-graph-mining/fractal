@@ -3,7 +3,7 @@ package br.ufmg.cs.systems.fractal.apps
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
 import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
-import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodNeighborhoodAdd, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexKAdd, SolutionNeighborhoodVertexKRemove, SolutionNeighborhoodVertexKSwap, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
+import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
 import com.koloboke.collect.map.hash.HashIntIntMaps
@@ -241,7 +241,7 @@ object VNSApp extends Logging {
     }
 
     // input graph
-    val fgraph = fc.vertexLabeledGraphFromAdjLists(graphPath)
+    val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
        .set("ws_external", false)
 
     // materialize input graph
