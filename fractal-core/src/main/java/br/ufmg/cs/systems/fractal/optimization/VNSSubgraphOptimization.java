@@ -83,7 +83,7 @@ public class VNSSubgraphOptimization implements Logging {
    private boolean localSearch(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood sneighborhood, int id) {
       boolean improvement, hasImproved = false;
       do {
-         improvement = sneighborhood.firstImproving(subgraph);
+         improvement = sneighborhood.firstImproving(subgraph, timeLimitMs);
          if(improvement) {
             logApp(() -> String.format("%d %s", id, subgraph.toShortString()));
             hasImproved = true;  // Track if at least one improvement happened

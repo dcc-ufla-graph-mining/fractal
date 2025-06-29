@@ -12,7 +12,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
    private final IntSet nonArticulationVertices = HashIntSets.newMutableSet(); // List containing the non-articulation vertices of the subgraph
 
    @Override
-   public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
+   public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph, long timeLimitMs) {
       adjLists = subgraph.getAdjLists();
 
       // Get the non-articulation vertices
@@ -26,14 +26,18 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       IntCursor cur = nonArticulationVertices.cursor();
       while (cur.moveNext()) {
          int vertex = cur.elem();
-         subgraph.removeVertex(vertex);
+
+         // Try to remove the vertex within the time limit
+         if(!subgraph.removeWithTimeOut(vertex, timeLimitMs)) {
+            return false;
+         }
 
          // Checks if the cost has increased
          if (subgraph.getCost() > initialCost) {
             subgraph.setUpdateString(String.format("-%d", vertex));
             return true;
          } else {
-            subgraph.addVertex(vertex, initialCost);
+            subgraph.addAndSetCost(vertex, initialCost);
          }
       }
       return false;
@@ -59,7 +63,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          cur.moveNext();
       }
       int vertex = cur.elem();
-      subgraph.removeVertex(vertex);   // Remove the random vertex
+      subgraph.removeAndRecalculateCost(vertex);   // Remove the random vertex
       subgraph.setUpdateString(String.format("/-%d", vertex));
    }
 

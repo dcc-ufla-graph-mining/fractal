@@ -9,7 +9,7 @@ public interface SolutionNeighborhood extends Logging {
     * @param subgraph
     * @return
     */
-   boolean firstImproving(VertexInducedOptimizationSubgraph subgraph);
+   boolean firstImproving(VertexInducedOptimizationSubgraph subgraph, long timeLimitMs);
 
    void randomShake(VertexInducedOptimizationSubgraph subgraph);
 }

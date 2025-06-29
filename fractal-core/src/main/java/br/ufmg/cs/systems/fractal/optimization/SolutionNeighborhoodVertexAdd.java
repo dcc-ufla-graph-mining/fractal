@@ -8,6 +8,9 @@ import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 
 public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
     private  IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
@@ -15,7 +18,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
     private final IntArrayListView vertexNeighborhood = new IntArrayListView(); // List to see the neighbors of a given vertex
 
     @Override
-    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
+    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph, long timeLimitMs) {
         adjLists = subgraph.getAdjLists();
         double initialCost = subgraph.getCost();
 
@@ -36,14 +39,18 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                 int neighborIndex = (neighborsOffset + j) % numNeighbors;   // Calculate next neighbor index
                 int neighbor = vertexNeighborhood.get(neighborIndex);
                 if (!adjLists.containsKey(neighbor)) {
-                    subgraph.addVertex((neighbor));
+
+                    // Try to add the neighbor within the time limit
+                    if(!subgraph.addWithTimeOut(neighbor, timeLimitMs)) {
+                        return false;
+                    }
 
                     // Verifies if the cost has increased
                     if (subgraph.getCost() > initialCost) {
                         subgraph.setUpdateString(String.format("+%d", neighbor));
                         return true;
                     } else {
-                        subgraph.removeVertex(neighbor, initialCost);
+                        subgraph.removeAndSetCost(neighbor, initialCost);
                     }
                 }
             }
@@ -87,7 +94,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
             // Verifies if the neighbor is not in the subgraph
             if (!adjLists.containsKey(randomNeighbor)) {
-                subgraph.addVertex(randomNeighbor);      // Add the random neighbor vertex
+                subgraph.addAndRecalculateCost(randomNeighbor);      // Add the random neighbor vertex
                 subgraph.setUpdateString(String.format("/+%d", randomNeighbor));
                 vertexAdded = true;
             }
@@ -109,7 +116,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             }
             int neighbor = cur.elem();
 
-            subgraph.addVertex(neighbor);    // Add the random neighbor vertex
+            subgraph.addAndRecalculateCost(neighbor);    // Add the random neighbor vertex
             subgraph.setUpdateString(String.format("/+%d", neighbor));
         }
     }

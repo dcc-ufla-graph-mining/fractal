@@ -15,7 +15,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
     private final IntArrayListView vertexNeighborhood = new IntArrayListView();     // List to see the neighbors of a given vertex
 
     @Override
-    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
+    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph, long timeLimitMs) {
         adjLists = subgraph.getAdjLists();
 
         // Get the subgraph vertices
@@ -33,7 +33,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
         IntCursor cur = nonArticulationVertices.cursor();
         while(cur.moveNext()) {
             int vertexToRemove = cur.elem();
-            subgraph.removeVertex(vertexToRemove);
+            subgraph.removeAndSetCost(vertexToRemove, initialCost);
 
             // Get a vertex from the subgraph
             IntCursor ncur = subgraphVertices.cursor();
@@ -52,20 +52,25 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
 
                         // Check if the neighbor it is not in the subgraph and add it
                         if (!adjLists.containsKey(neighborToAdd)) {
-                            subgraph.addVertex(neighborToAdd);
+
+                            // Try to add the vertex within the time limit
+                            if(!subgraph.addWithTimeOut(neighborToAdd, timeLimitMs)) {
+                                subgraph.addAndSetCost(vertexToRemove, initialCost);    // Rollback the vertex removal
+                                return false;
+                            }
 
                             // Check if the swap increased the cost
                             if (subgraph.getCost() > initialCost) {
                                 subgraph.setUpdateString(String.format("-%d+%d", vertexToRemove, neighborToAdd));
                                 return true;
                             } else {
-                                subgraph.removeVertex(neighborToAdd, initialCost);
+                                subgraph.removeAndSetCost(neighborToAdd, initialCost);  // Rollback the vertex addition
                             }
                         }
                     }
                 }
             }
-            subgraph.addVertex(vertexToRemove, initialCost);
+            subgraph.addAndSetCost(vertexToRemove, initialCost);  // Rollback the vertex removal
         }
         return false;
     }
