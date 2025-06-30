@@ -11,6 +11,7 @@ import com.koloboke.collect.map.{IntIntMap, IntObjCursor}
 import org.apache.spark.SparkContext.jarOfObject
 import org.apache.spark.{SparkConf, SparkContext}
 
+import java.util.concurrent.Executors
 import java.util.function.ToDoubleFunction
 
 case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
@@ -30,24 +31,27 @@ class LocalSearchAggregation
   }
 
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
-    val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction)
-    val neighborhoodStructures =
-      Array(
-        new SolutionNeighborhoodVertexAdd,
-        new SolutionNeighborhoodVertexRemove,
-        new SolutionNeighborhoodVertexSwap,
-        //new SolutionNeighborhoodVertexKAdd,
-        //new SolutionNeighborhoodVertexKRemove,
-        //new SolutionNeighborhoodVertexKSwap
-      )
-
-    val vnsOpt = new VNSSubgraphOptimization()
+    val executor = Executors.newSingleThreadExecutor
+    val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction, executor)
     try {
+      val neighborhoodStructures =
+        Array(
+          new SolutionNeighborhoodVertexAdd,
+          new SolutionNeighborhoodVertexRemove,
+          new SolutionNeighborhoodVertexSwap,
+          //new SolutionNeighborhoodVertexKAdd,
+          //new SolutionNeighborhoodVertexKRemove,
+          //new SolutionNeighborhoodVertexKSwap
+        )
+
+      val vnsOpt = new VNSSubgraphOptimization()
       val improvement = vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
     } catch {
       case e: RuntimeException =>
         logApp(s"EXCEPTION: ${e} ${e.getStackTrace.slice(0, 5).mkString("," + "")}")
         throw new RuntimeException(e)
+    } finally {
+      executor.shutdownNow()
     }
 
     val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.getCost)

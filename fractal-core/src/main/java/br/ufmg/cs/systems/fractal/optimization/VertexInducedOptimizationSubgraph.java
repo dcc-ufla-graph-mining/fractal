@@ -45,7 +45,8 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    private transient final WriteExternalConsumer writerExternalConsumer = new WriteExternalConsumer();
    transient private ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
    transient private String updateString;
-   private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+   transient private ExecutorService executor;
    Future<?> future = null;
 
    public VertexInducedOptimizationSubgraph() {
@@ -56,10 +57,12 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     * @param subgraph
     */
    public VertexInducedOptimizationSubgraph(VertexInducedSubgraph subgraph,
-                                            ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction) {
+                                            ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction,
+                                            ExecutorService executor) {
       this.objectiveFunction = objectiveFunction;
       this.underlyingGraph = subgraph.getMainGraph();
       this.adjLists = HashIntObjMaps.newMutableMap();
+      this.executor = executor;
 
       Pattern pattern = subgraph.quickPattern();
       this.numVertices = subgraph.getNumVertices();
@@ -93,6 +96,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    public void copyTo(VertexInducedOptimizationSubgraph target) {
       target.objectiveFunction = this.objectiveFunction;
       target.underlyingGraph = this.getUnderlyingGraph();
+      target.executor = executor;
       if (target.adjLists == null) {
          target.adjLists = HashIntObjMaps.newMutableMap(this.getAdjLists().size());
       }

@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class VNSSubgraphOptimization implements Logging {
 
    private static final AtomicInteger nextId = new AtomicInteger();
-   private VertexInducedOptimizationSubgraph vnsSubgraph = new VertexInducedOptimizationSubgraph();
+   private VertexInducedOptimizationSubgraph vnsSubgraph;
    long initialTimeMs;
    private long elapsedRunTimeMs;   // Elapsed time in the current run
    long timeLimitMs;                // Time limit to execute the run
@@ -31,6 +31,11 @@ public class VNSSubgraphOptimization implements Logging {
    public boolean run(VertexInducedOptimizationSubgraph subgraph, // Initial solution
                       SolutionNeighborhood[] neighborhoodStructures,
                       long timeLimitMs) {
+
+      if (vnsSubgraph == null) {
+         vnsSubgraph = new VertexInducedOptimizationSubgraph();
+      }
+
       final int id = nextId.getAndIncrement();
 
       logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
