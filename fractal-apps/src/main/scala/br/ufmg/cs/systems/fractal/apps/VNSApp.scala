@@ -51,6 +51,7 @@ class LocalSearchAggregation
         logApp(s"EXCEPTION: ${e} ${e.getStackTrace.slice(0, 5).mkString("," + "")}")
         throw new RuntimeException(e)
     } finally {
+      Thread.sleep(1000);
       executor.shutdownNow()
     }
 
