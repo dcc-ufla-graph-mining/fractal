@@ -10,12 +10,12 @@ numInitVertices=(10)
 numInitSolutions=(100 1000)
 seed=(-1)
 timeLimitMs=(1000 2000 3000)
-objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "labelentropy" "triangledensestsubgraph")
+objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph") #labelentropy
 repeats=5 # Number of times to repeat each run
 
 # Define graph name and directory
-graphDir="$HOME/graphs-data/patents"
-graphName="patents"
+graphDir="$HOME/graphs-data/livejournal"
+graphName="livejournal"
 
 # Loop through all combinations
 for ((core=cores_lower; core<=$cores_upper; core++)); do
@@ -33,7 +33,7 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
                         full_command="./gradlew jar && master_memory=${memory}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} args=\"$args\" ./bin/fractal-custom-app.sh"
 
                         # Run the main Spark job
-                        eval "$full_command" &
+                        eval "$full_command" > /dev/null 2>&1  &
                         main_pid=$!
 
                         # Wait for Spark process to start
@@ -54,6 +54,9 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
 
                         echo "Spark process found with PID $spark_pid"
 
+			# Small delay to ensure process stability
+                        sleep 2
+
                         # Start monitoring scripts
                         ./scripts/so_metrics_pidstat.sh "$prefix" &
                         pidstat_pid=$!
@@ -73,4 +76,5 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
         done
     done
 done
+
 
