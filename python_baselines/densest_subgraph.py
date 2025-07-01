@@ -1,8 +1,5 @@
 import os
-import networkx as nx
-
 import math
-
 import networkx as nx
 
 __all__ = ["densest_subgraph"]
