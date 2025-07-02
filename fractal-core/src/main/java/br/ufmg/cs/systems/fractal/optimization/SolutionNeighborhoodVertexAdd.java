@@ -40,10 +40,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                 int neighbor = vertexNeighborhood.get(neighborIndex);
                 if (!adjLists.containsKey(neighbor)) {
 
-                    // Try to add the neighbor within the time limit
-                    if(!subgraph.addWithTimeOut(neighbor, timeLimitMs)) {
-                        return false;
-                    }
+                    subgraph.addAndRecalculateCost(neighbor);
 
                     // Verifies if the cost has increased
                     if (subgraph.getCost() > initialCost) {

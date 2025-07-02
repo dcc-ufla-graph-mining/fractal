@@ -3,15 +3,14 @@ package br.ufmg.cs.systems.fractal.apps
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
 import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
-import br.ufmg.cs.systems.fractal.optimization.{SolutionNeighborhood, SolutionNeighborhoodVertexAdd, SolutionNeighborhoodVertexRemove, SolutionNeighborhoodVertexSwap, VNSSubgraphOptimization, VertexInducedOptimizationSubgraph}
+import br.ufmg.cs.systems.fractal.optimization._
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
 import com.koloboke.collect.map.hash.HashIntIntMaps
 import com.koloboke.collect.map.{IntIntMap, IntObjCursor}
-import org.apache.spark.SparkContext.jarOfObject
 import org.apache.spark.{SparkConf, SparkContext}
 
-import java.util.concurrent.Executors
+import java.util.concurrent.{Callable, Executors, Future, TimeUnit, TimeoutException}
 import java.util.function.ToDoubleFunction
 
 case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
@@ -33,25 +32,34 @@ class LocalSearchAggregation
   override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
     val executor = Executors.newSingleThreadExecutor
     val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction, executor)
+    val neighborhoodStructures =
+      Array(
+        new SolutionNeighborhoodVertexAdd,
+        new SolutionNeighborhoodVertexRemove,
+        new SolutionNeighborhoodVertexSwap,
+        //new SolutionNeighborhoodVertexKAdd,
+        //new SolutionNeighborhoodVertexKRemove,
+        //new SolutionNeighborhoodVertexKSwap
+      )
+    var future: Future[Boolean] = null
     try {
-      val neighborhoodStructures =
-        Array(
-          new SolutionNeighborhoodVertexAdd,
-          new SolutionNeighborhoodVertexRemove,
-          new SolutionNeighborhoodVertexSwap,
-          //new SolutionNeighborhoodVertexKAdd,
-          //new SolutionNeighborhoodVertexKRemove,
-          //new SolutionNeighborhoodVertexKSwap
-        )
-
       val vnsOpt = new VNSSubgraphOptimization()
-      val improvement = vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
+      future = executor.submit(() => {
+        vnsOpt.run(subgraph, neighborhoodStructures, vnsTimeLimitMs)
+      })
+      future.get(vnsTimeLimitMs, TimeUnit.MILLISECONDS)
     } catch {
+      case e: TimeoutException =>
+        subgraph.synchronized {
+          future.cancel(true) // Interrupt recalculation if running
+          subgraph.setFinished(true)
+          logError("finished " + e)
+        }
       case e: RuntimeException =>
         logApp(s"EXCEPTION: ${e} ${e.getStackTrace.slice(0, 5).mkString("," + "")}")
         throw new RuntimeException(e)
     } finally {
-      Thread.sleep(1000);
+      //Thread.sleep(1000);
       executor.shutdownNow()
     }
 
@@ -279,5 +287,7 @@ object VNSApp extends Logging {
     // environment cleaning
     fc.stop()
     sc.stop()
+
+    System.exit(0)
   }
 }

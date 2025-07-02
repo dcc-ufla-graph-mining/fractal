@@ -4,6 +4,7 @@ import br.ufmg.cs.systems.fractal.graph.MainGraph;
 import br.ufmg.cs.systems.fractal.pattern.Pattern;
 import br.ufmg.cs.systems.fractal.pattern.PatternEdge;
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph;
+import br.ufmg.cs.systems.fractal.util.Logging;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
@@ -23,6 +24,8 @@ import java.util.function.ToDoubleFunction;
 
 
 public class VertexInducedOptimizationSubgraph implements Externalizable {
+
+   private boolean finished = false;
 
    private int numVertices;
    private int numEdges;
@@ -94,27 +97,34 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     * Make a copy into an existing optimization subgraph
     */
    public void copyTo(VertexInducedOptimizationSubgraph target) {
-      target.objectiveFunction = this.objectiveFunction;
-      target.underlyingGraph = this.getUnderlyingGraph();
-      target.executor = executor;
-      if (target.adjLists == null) {
-         target.adjLists = HashIntObjMaps.newMutableMap(this.getAdjLists().size());
+      synchronized (target) {
+         if (target.getFinished()) {
+            Logging.getLogger(this.getClass().getName()).error("Aborting " +
+                    "copyTo " + this + " -> " + target);
+            return;
+         }
+         target.objectiveFunction = this.objectiveFunction;
+         target.underlyingGraph = this.getUnderlyingGraph();
+         target.executor = executor;
+         if (target.adjLists == null) {
+            target.adjLists = HashIntObjMaps.newMutableMap(this.getAdjLists().size());
+         }
+
+         target.adjLists.clear();
+
+         target.numVertices = this.getNumVertices();
+         target.numEdges = this.getNumEdges();
+
+         // create adjacency lists for each vertex
+         IntObjCursor<IntIntMap> adjCur = this.adjLists.cursor();
+         while (adjCur.moveNext()) {
+            int vertex = adjCur.key();
+            IntIntMap adjList = HashIntIntMaps.newMutableMap(adjCur.value());
+            target.adjLists.put(vertex, adjList);
+         }
+
+         target.cost = this.getCost();
       }
-
-      target.adjLists.clear();
-
-      target.numVertices = this.getNumVertices();
-      target.numEdges = this.getNumEdges();
-
-      // create adjacency lists for each vertex
-      IntObjCursor<IntIntMap> adjCur = this.adjLists.cursor();
-      while (adjCur.moveNext()) {
-         int vertex = adjCur.key();
-         IntIntMap adjList = HashIntIntMaps.newMutableMap(adjCur.value());
-         target.adjLists.put(vertex, adjList);
-      }
-
-      target.cost = this.getCost();
    }
 
    public int vertexDegree(int u) {
@@ -490,6 +500,14 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       objectOutput.writeInt(adjLists.size());
       writerExternalConsumer.setObjectOutput(objectOutput);
       adjLists.forEach(writerExternalConsumer);
+   }
+
+   public synchronized void setFinished(boolean finished) {
+      this.finished = finished;
+   }
+
+   public boolean getFinished() {
+      return this.finished;
    }
 
    @Override

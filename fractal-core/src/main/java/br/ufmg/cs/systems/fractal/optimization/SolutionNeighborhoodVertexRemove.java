@@ -28,9 +28,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
          int vertex = cur.elem();
 
          // Try to remove the vertex within the time limit
-         if(!subgraph.removeWithTimeOut(vertex, timeLimitMs)) {
-            return false;
-         }
+         subgraph.removeAndRecalculateCost(vertex);
 
          // Checks if the cost has increased
          if (subgraph.getCost() > initialCost) {
