@@ -93,6 +93,11 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     */
    public void copyTo(VertexInducedOptimizationSubgraph target) {
       synchronized (target) {
+         // Cancel copy to avoid inconsistent graphs
+         if (target.getFinished()) {
+            return;
+         }
+
          target.objectiveFunction = this.objectiveFunction;
          target.underlyingGraph = this.getUnderlyingGraph();
 
@@ -105,7 +110,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
          target.numVertices = this.getNumVertices();
          target.numEdges = this.getNumEdges();
 
-         // create adjacency lists for each vertex
+         // Create adjacency lists for each vertex
          IntObjCursor<IntIntMap> adjCur = this.adjLists.cursor();
          while (adjCur.moveNext()) {
             int vertex = adjCur.key();
@@ -496,9 +501,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       this.finished = finished;
    }
 
-   public boolean getFinished() {
-      return this.finished;
-   }
+   public boolean getFinished() { return this.finished; }
 
    @Override
    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {

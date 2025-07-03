@@ -48,8 +48,11 @@ public class VNSSubgraphOptimization implements Logging {
       subgraph.copyTo(vnsSubgraph); // Make a copy of the initial solution (subgraph)
 
       // Run VNS
+      future = executor.submit(() -> {
+         vns(subgraph, neighborhoodStructures, id);
+      });
+
       try {
-         future = executor.submit(() -> vns(subgraph, neighborhoodStructures, id));
          future.get(timeLimitMs, TimeUnit.MILLISECONDS);
       } catch (TimeoutException e) {
          // Interrupt VNS
@@ -58,9 +61,9 @@ public class VNSSubgraphOptimization implements Logging {
             subgraph.setFinished(true);
          }
       } catch (ExecutionException e) {
-          throw new RuntimeException("VNS run failed" + e.getCause());
+          throw new RuntimeException("VNS run failed " + e.getCause());
       } catch (InterruptedException e) {
-          throw new RuntimeException("VNS run interrupted" + e.getCause());
+          throw new RuntimeException("VNS run interrupted " + e.getCause());
       }
 
       logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
