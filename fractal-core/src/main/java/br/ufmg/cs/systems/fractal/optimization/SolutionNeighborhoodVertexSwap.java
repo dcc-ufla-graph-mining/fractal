@@ -15,7 +15,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
     private final IntArrayListView vertexNeighborhood = new IntArrayListView();     // List to see the neighbors of a given vertex
 
     @Override
-    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph, long timeLimitMs) {
+    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
 
         // Get the subgraph vertices

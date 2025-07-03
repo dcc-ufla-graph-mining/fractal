@@ -18,7 +18,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
     private final IntArrayListView vertexNeighborhood = new IntArrayListView(); // List to see the neighbors of a given vertex
 
     @Override
-    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph, long timeLimitMs) {
+    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
         double initialCost = subgraph.getCost();
 
@@ -38,8 +38,8 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             for (int j = 0; j < numNeighbors; j++) {
                 int neighborIndex = (neighborsOffset + j) % numNeighbors;   // Calculate next neighbor index
                 int neighbor = vertexNeighborhood.get(neighborIndex);
-                if (!adjLists.containsKey(neighbor)) {
 
+                if (!adjLists.containsKey(neighbor)) {
                     subgraph.addAndRecalculateCost(neighbor);
 
                     // Verifies if the cost has increased
