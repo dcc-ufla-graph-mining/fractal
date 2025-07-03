@@ -15,7 +15,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
     private final IntArrayListView vertexNeighborhood = new IntArrayListView();     // List to see the neighbors of a given vertex
 
     @Override
-    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph, long timeLimitMs) {
+    public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
 
         // Get the subgraph vertices
@@ -53,11 +53,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
                         // Check if the neighbor it is not in the subgraph and add it
                         if (!adjLists.containsKey(neighborToAdd)) {
 
-                            // Try to add the vertex within the time limit
-                            if(!subgraph.addWithTimeOut(neighborToAdd, timeLimitMs)) {
-                                subgraph.addAndSetCost(vertexToRemove, initialCost);    // Rollback the vertex removal
-                                return false;
-                            }
+                            subgraph.addAndRecalculateCost(neighborToAdd);
 
                             // Check if the swap increased the cost
                             if (subgraph.getCost() > initialCost) {

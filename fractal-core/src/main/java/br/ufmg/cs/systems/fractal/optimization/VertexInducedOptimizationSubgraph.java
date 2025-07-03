@@ -4,6 +4,7 @@ import br.ufmg.cs.systems.fractal.graph.MainGraph;
 import br.ufmg.cs.systems.fractal.pattern.Pattern;
 import br.ufmg.cs.systems.fractal.pattern.PatternEdge;
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph;
+import br.ufmg.cs.systems.fractal.util.Logging;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
@@ -23,6 +24,8 @@ import java.util.function.ToDoubleFunction;
 
 
 public class VertexInducedOptimizationSubgraph implements Externalizable {
+
+   private boolean finished = false;
 
    private int numVertices;
    private int numEdges;
@@ -46,9 +49,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
    transient private ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
    transient private String updateString;
 
-   transient private ExecutorService executor;
-   Future<?> future = null;
-
    public VertexInducedOptimizationSubgraph() {
    }
 
@@ -57,12 +57,10 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     * @param subgraph
     */
    public VertexInducedOptimizationSubgraph(VertexInducedSubgraph subgraph,
-                                            ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction,
-                                            ExecutorService executor) {
+                                            ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction) {
       this.objectiveFunction = objectiveFunction;
       this.underlyingGraph = subgraph.getMainGraph();
       this.adjLists = HashIntObjMaps.newMutableMap();
-      this.executor = executor;
 
       Pattern pattern = subgraph.quickPattern();
       this.numVertices = subgraph.getNumVertices();
@@ -94,27 +92,34 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     * Make a copy into an existing optimization subgraph
     */
    public void copyTo(VertexInducedOptimizationSubgraph target) {
-      target.objectiveFunction = this.objectiveFunction;
-      target.underlyingGraph = this.getUnderlyingGraph();
-      target.executor = executor;
-      if (target.adjLists == null) {
-         target.adjLists = HashIntObjMaps.newMutableMap(this.getAdjLists().size());
+      synchronized (target) {
+         // Cancel copy to avoid inconsistent graphs
+         if (target.getFinished()) {
+            return;
+         }
+
+         target.objectiveFunction = this.objectiveFunction;
+         target.underlyingGraph = this.getUnderlyingGraph();
+
+         if (target.adjLists == null) {
+            target.adjLists = HashIntObjMaps.newMutableMap(this.getAdjLists().size());
+         }
+
+         target.adjLists.clear();
+
+         target.numVertices = this.getNumVertices();
+         target.numEdges = this.getNumEdges();
+
+         // Create adjacency lists for each vertex
+         IntObjCursor<IntIntMap> adjCur = this.adjLists.cursor();
+         while (adjCur.moveNext()) {
+            int vertex = adjCur.key();
+            IntIntMap adjList = HashIntIntMaps.newMutableMap(adjCur.value());
+            target.adjLists.put(vertex, adjList);
+         }
+
+         target.cost = this.getCost();
       }
-
-      target.adjLists.clear();
-
-      target.numVertices = this.getNumVertices();
-      target.numEdges = this.getNumEdges();
-
-      // create adjacency lists for each vertex
-      IntObjCursor<IntIntMap> adjCur = this.adjLists.cursor();
-      while (adjCur.moveNext()) {
-         int vertex = adjCur.key();
-         IntIntMap adjList = HashIntIntMaps.newMutableMap(adjCur.value());
-         target.adjLists.put(vertex, adjList);
-      }
-
-      target.cost = this.getCost();
    }
 
    public int vertexDegree(int u) {
@@ -229,43 +234,43 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       recalculateCost();  // Recalculate cost
    }
 
-   /**
-    * Attempts to add a new vertex to this subgraph and recalculate its cost within a time limit
-    * If the time limit is exceeded, the method is interrupted
-    * Assumes that adding the vertex DOES NOT disconnect the subgraph
-    * @param vertexToAdd vertex to be added to the subgraph
-    * @param timeLimitMs maximum time (in milliseconds) for the operation to complete
-    * @return true if the vertex addition and the cost recalculation are completed within the time limit,
-    *          false case the time limit is exceeded
-    */
-   public boolean addWithTimeOut(int vertexToAdd, long timeLimitMs) {
-      // Validate time limit input
-      if (timeLimitMs <= 0) {
-         throw new IllegalArgumentException("Time limit must be greater than 0");
-      }
-
-      addVertex(vertexToAdd);
-
-      // Try to recalculate the cost
-      try {
-         future = executor.submit(this::recalculateCost);
-         future.get(timeLimitMs, TimeUnit.MILLISECONDS);
-         return true;
-      } catch(TimeoutException e) {
-         future.cancel(true);    // Interrupt recalculation if running
-         removeVertex(vertexToAdd); // Rollback vertex addition
-         return false;
-      } catch (ExecutionException e) {
-          throw new RuntimeException("Cost recalculation failed", e.getCause());
-      } catch (InterruptedException e) {
-          throw new RuntimeException("Cost recalculation interrupted", e.getCause());
-      } finally {
-         if (future != null) {
-            future.cancel(true); // Cleanup if not already done
-         }
-      }
-
-   }
+//   /**
+//    * Attempts to add a new vertex to this subgraph and recalculate its cost within a time limit
+//    * If the time limit is exceeded, the method is interrupted
+//    * Assumes that adding the vertex DOES NOT disconnect the subgraph
+//    * @param vertexToAdd vertex to be added to the subgraph
+//    * @param timeLimitMs maximum time (in milliseconds) for the operation to complete
+//    * @return true if the vertex addition and the cost recalculation are completed within the time limit,
+//    *          false case the time limit is exceeded
+//    */
+//   public boolean addWithTimeOut(int vertexToAdd, long timeLimitMs) {
+//      // Validate time limit input
+//      if (timeLimitMs <= 0) {
+//         throw new IllegalArgumentException("Time limit must be greater than 0");
+//      }
+//
+//      addVertex(vertexToAdd);
+//
+//      // Try to recalculate the cost
+//      try {
+//         future = executor.submit(this::recalculateCost);
+//         future.get(timeLimitMs, TimeUnit.MILLISECONDS);
+//         return true;
+//      } catch(TimeoutException e) {
+//         future.cancel(true);    // Interrupt recalculation if running
+//         removeVertex(vertexToAdd); // Rollback vertex addition
+//         return false;
+//      } catch (ExecutionException e) {
+//          throw new RuntimeException("Cost recalculation failed", e.getCause());
+//      } catch (InterruptedException e) {
+//          throw new RuntimeException("Cost recalculation interrupted", e.getCause());
+//      } finally {
+//         if (future != null) {
+//            future.cancel(true); // Cleanup if not already done
+//         }
+//      }
+//
+//   }
 
 
    /**
@@ -316,43 +321,43 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       setCost(cost);
    }
 
-   /**
-    * Attempts to remove a vertex from this subgraph and recalculate its cost within a time limit
-    * If the time limit is exceeded, the method is interrupted
-    * Assumes that adding the vertex DOES NOT disconnect the subgraph
-    * @param vertexToRemove vertex to be added to the subgraph
-    * @param timeLimitMs maximum time (in milliseconds) for the operation to complete
-    * @return true if the vertex removal and the cost recalculation are completed within the time limit,
-    *          false case the time limit is exceeded
-    */
-   public boolean removeWithTimeOut(int vertexToRemove, long timeLimitMs) {
-      // Validate time limit input
-      if (timeLimitMs <= 0) {
-         throw new IllegalArgumentException("Time limit must be greater than 0");
-      }
-
-      removeVertex(vertexToRemove);
-
-      // Try to recalculate the cost
-      try {
-         future = executor.submit(this::recalculateCost);
-         future.get(timeLimitMs, TimeUnit.MILLISECONDS);
-         return true;
-      } catch(TimeoutException e) {
-         future.cancel(true);    // Interrupt recalculation if running
-         addVertex(vertexToRemove); // Rollback vertex removal
-         return false;
-      } catch (ExecutionException e) {
-         throw new RuntimeException("Cost recalculation failed", e.getCause());
-      } catch (InterruptedException e) {
-         throw new RuntimeException("Cost recalculation interrupted", e.getCause());
-      } finally {
-         if (future != null) {
-            future.cancel(true); // Cleanup if not already done
-         }
-      }
-
-   }
+//   /**
+//    * Attempts to remove a vertex from this subgraph and recalculate its cost within a time limit
+//    * If the time limit is exceeded, the method is interrupted
+//    * Assumes that adding the vertex DOES NOT disconnect the subgraph
+//    * @param vertexToRemove vertex to be added to the subgraph
+//    * @param timeLimitMs maximum time (in milliseconds) for the operation to complete
+//    * @return true if the vertex removal and the cost recalculation are completed within the time limit,
+//    *          false case the time limit is exceeded
+//    */
+//   public boolean removeWithTimeOut(int vertexToRemove, long timeLimitMs) {
+//      // Validate time limit input
+//      if (timeLimitMs <= 0) {
+//         throw new IllegalArgumentException("Time limit must be greater than 0");
+//      }
+//
+//      removeVertex(vertexToRemove);
+//
+//      // Try to recalculate the cost
+//      try {
+//         future = executor.submit(this::recalculateCost);
+//         future.get(timeLimitMs, TimeUnit.MILLISECONDS);
+//         return true;
+//      } catch(TimeoutException e) {
+//         future.cancel(true);    // Interrupt recalculation if running
+//         addVertex(vertexToRemove); // Rollback vertex removal
+//         return false;
+//      } catch (ExecutionException e) {
+//         throw new RuntimeException("Cost recalculation failed", e.getCause());
+//      } catch (InterruptedException e) {
+//         throw new RuntimeException("Cost recalculation interrupted", e.getCause());
+//      } finally {
+//         if (future != null) {
+//            future.cancel(true); // Cleanup if not already done
+//         }
+//      }
+//
+//   }
 
    /**
     * Update this subgraph by removing a vertex and adding another vertex
@@ -367,47 +372,47 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       recalculateCost();
    }
 
-   /**
-    * Attempts to remove a vertex, add another one and recalculate its cost within a time limit.
-    * If the time limit is exceeded, the method is interrupted, and the swap is reverted
-    * Assumes that swaping the vertices DOES NOT disconnect the subgraph
-    * @param vertexToAdd vertex to be added to the subgraph
-    * @param vertexToRemove vertex to be removed from the subgraph
-    * @param timeLimitMs maximum time (in milliseconds) for the operation to complete
-    * @return true if the vertex swaping and the cost recalculation are completed within the time limit,
-    *          false case the time limit is exceeded
-    */
-   public boolean swapWithTimeOut(int vertexToAdd, int vertexToRemove, long timeLimitMs) {
-      // Validate time limit input
-      if (timeLimitMs <= 0) {
-         throw new IllegalArgumentException("Time limit must be greater than 0");
-      }
-
-      // Swap vertices
-      removeVertex(vertexToRemove);
-      addVertex(vertexToAdd);
-
-      // Try to recalculate the cost
-      try {
-         future = executor.submit(this::recalculateCost);
-         future.get(timeLimitMs, TimeUnit.MILLISECONDS);
-         return true;
-      } catch(TimeoutException e) {
-         future.cancel(true);    // Interrupt recalculation if running
-         addVertex(vertexToRemove); // Rollback vertex removal
-         removeVertex(vertexToAdd); // Rollback vertex addition
-         return false;
-      } catch (ExecutionException e) {
-         throw new RuntimeException("Cost recalculation failed", e.getCause());
-      } catch (InterruptedException e) {
-         throw new RuntimeException("Cost recalculation interrupted", e.getCause());
-      } finally {
-         if (future != null) {
-            future.cancel(true); // Cleanup if not already done
-         }
-      }
-
-   }
+//   /**
+//    * Attempts to remove a vertex, add another one and recalculate its cost within a time limit.
+//    * If the time limit is exceeded, the method is interrupted, and the swap is reverted
+//    * Assumes that swaping the vertices DOES NOT disconnect the subgraph
+//    * @param vertexToAdd vertex to be added to the subgraph
+//    * @param vertexToRemove vertex to be removed from the subgraph
+//    * @param timeLimitMs maximum time (in milliseconds) for the operation to complete
+//    * @return true if the vertex swaping and the cost recalculation are completed within the time limit,
+//    *          false case the time limit is exceeded
+//    */
+//   public boolean swapWithTimeOut(int vertexToAdd, int vertexToRemove, long timeLimitMs) {
+//      // Validate time limit input
+//      if (timeLimitMs <= 0) {
+//         throw new IllegalArgumentException("Time limit must be greater than 0");
+//      }
+//
+//      // Swap vertices
+//      removeVertex(vertexToRemove);
+//      addVertex(vertexToAdd);
+//
+//      // Try to recalculate the cost
+//      try {
+//         future = executor.submit(this::recalculateCost);
+//         future.get(timeLimitMs, TimeUnit.MILLISECONDS);
+//         return true;
+//      } catch(TimeoutException e) {
+//         future.cancel(true);    // Interrupt recalculation if running
+//         addVertex(vertexToRemove); // Rollback vertex removal
+//         removeVertex(vertexToAdd); // Rollback vertex addition
+//         return false;
+//      } catch (ExecutionException e) {
+//         throw new RuntimeException("Cost recalculation failed", e.getCause());
+//      } catch (InterruptedException e) {
+//         throw new RuntimeException("Cost recalculation interrupted", e.getCause());
+//      } finally {
+//         if (future != null) {
+//            future.cancel(true); // Cleanup if not already done
+//         }
+//      }
+//
+//   }
 
    /**
     * Subgraph as a string
@@ -491,6 +496,12 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
       writerExternalConsumer.setObjectOutput(objectOutput);
       adjLists.forEach(writerExternalConsumer);
    }
+
+   public synchronized void setFinished(boolean finished) {
+      this.finished = finished;
+   }
+
+   public boolean getFinished() { return this.finished; }
 
    @Override
    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {

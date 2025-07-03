@@ -13,15 +13,18 @@ import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
 import java.util.Random;
 
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class VNSSubgraphOptimization implements Logging {
 
    private static final AtomicInteger nextId = new AtomicInteger();
    private VertexInducedOptimizationSubgraph vnsSubgraph;
-   long initialTimeMs;
-   private long elapsedRunTimeMs;   // Elapsed time in the current run
-   long timeLimitMs;                // Time limit to execute the run
+   private long timeLimitMs;                // Time limit to execute the run
+   transient private ExecutorService executor;
+   private Future<?> future = null;
+   boolean improvement;
+
 
    /**
     * VNS implementation
@@ -30,52 +33,74 @@ public class VNSSubgraphOptimization implements Logging {
     */
    public boolean run(VertexInducedOptimizationSubgraph subgraph, // Initial solution
                       SolutionNeighborhood[] neighborhoodStructures,
-                      long timeLimitMs) {
+                      long timeLimitMs, ExecutorService executor) {
+
+      final int id = nextId.getAndIncrement();
+      improvement = false;
+      this.timeLimitMs = timeLimitMs;
+      this.executor = executor;
 
       if (vnsSubgraph == null) {
          vnsSubgraph = new VertexInducedOptimizationSubgraph();
       }
 
-      final int id = nextId.getAndIncrement();
-
       logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
-
-      boolean improvement = false;
-      this.initialTimeMs = System.currentTimeMillis();
-      this.elapsedRunTimeMs = 0;
-      this.timeLimitMs = timeLimitMs;
-
       subgraph.copyTo(vnsSubgraph); // Make a copy of the initial solution (subgraph)
 
-      // Runs VNS for a certain time
-      while(elapsedRunTimeMs < timeLimitMs) {
-         int idx = 0;
-         while (idx < neighborhoodStructures.length && elapsedRunTimeMs < timeLimitMs) {
-            SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
+      // Run VNS
+      future = executor.submit(() -> {
+         vns(subgraph, neighborhoodStructures, id);
+      });
 
-            sneighborhood.randomShake(vnsSubgraph);
-            if(vnsSubgraph.getCost() > subgraph.getCost()) {
-               vnsSubgraph.copyTo(subgraph); // Copies the improved subgraph to the solutions
-            }
-            logApp(() -> String.format("%d %s", id, vnsSubgraph.toShortString()));
-
-            if (localSearch(vnsSubgraph, sneighborhood, id)) {
-               if(vnsSubgraph.getCost() > subgraph.getCost()) {
-                  vnsSubgraph.copyTo(subgraph);    // Copies the improved subgraph to the solution
-               }
-               improvement = true;
-               idx = 0;
-            } else {
-               idx++;
-            }
-            elapsedRunTimeMs = System.currentTimeMillis() - initialTimeMs;
+      try {
+         future.get(timeLimitMs, TimeUnit.MILLISECONDS);
+      } catch (TimeoutException e) {
+         // Interrupt VNS
+         synchronized (subgraph) {
+            future.cancel(true);
+            subgraph.setFinished(true);
          }
-         elapsedRunTimeMs = System.currentTimeMillis() - initialTimeMs;
+      } catch (ExecutionException e) {
+          throw new RuntimeException("VNS run failed " + e.getCause());
+      } catch (InterruptedException e) {
+          throw new RuntimeException("VNS run interrupted " + e.getCause());
       }
 
       logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
       return improvement;
+   }
+
+   /**
+    * Run VNS while the time limit is not exceeded
+    * @param subgraph
+    * @param neighborhoodStructures
+    * @param id id identifies the initial solution (tracking purposes)
+    */
+   private void vns(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood[] neighborhoodStructures, int id) {
+      while (!Thread.currentThread().isInterrupted()) {
+         int idx = 0;
+         while (idx < neighborhoodStructures.length && !Thread.currentThread().isInterrupted()) {
+            SolutionNeighborhood sneighborhood = neighborhoodStructures[idx];
+
+            sneighborhood.randomShake(vnsSubgraph);
+            if (vnsSubgraph.getCost() > subgraph.getCost()) {
+               vnsSubgraph.copyTo(subgraph); // Copies the improved subgraph to the solutions
+               improvement = true;
+            }
+            logApp(() -> String.format("%d %s", id, vnsSubgraph.toShortString()));
+
+            if (localSearch(vnsSubgraph, sneighborhood, id)) {
+               if (vnsSubgraph.getCost() > subgraph.getCost()) {
+                  vnsSubgraph.copyTo(subgraph);    // Copies the improved subgraph to the solution
+                  improvement = true;
+               }
+               idx = 0;
+            } else {
+               idx++;
+            }
+         }
+      }
    }
 
    /**
@@ -88,13 +113,12 @@ public class VNSSubgraphOptimization implements Logging {
    private boolean localSearch(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood sneighborhood, int id) {
       boolean improvement, hasImproved = false;
       do {
-         improvement = sneighborhood.firstImproving(subgraph, timeLimitMs);
+         improvement = sneighborhood.firstImproving(subgraph);
          if(improvement) {
             logApp(() -> String.format("%d %s", id, subgraph.toShortString()));
             hasImproved = true;  // Track if at least one improvement happened
          }
-         elapsedRunTimeMs = System.currentTimeMillis() - initialTimeMs;
-      } while(improvement && elapsedRunTimeMs < timeLimitMs);
+      } while(improvement && !Thread.currentThread().isInterrupted());
 
       return hasImproved;
    }

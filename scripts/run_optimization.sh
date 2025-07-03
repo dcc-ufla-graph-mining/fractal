@@ -4,19 +4,19 @@ set -e
 
 # Define the variables
 memory=50
-cores_lower=32       # threads lower limit
+cores_lower=1       # threads lower limit
 cores_upper=32       # threads upper limit
 numInitVertices=(10)
-numInitSolutions=(100 1000)
+numInitSolutions=(100)
 seed=(-1)
 timeLimitMs=(1000 2000 3000)
-objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "labelentropy" "triangledensestsubgraph")
+objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph") #labelentropy
 repeats=5 # Number of times to repeat each run
 
 # Define graph and log dir
 graphDir="$HOME/graphs-data/dblp"
 graphName="dblp"
-logDir="$HOME/optimization-logs/optimality/temp/dblp"
+logDir="$HOME/optimization-logs/scalability/temp/dblp-logs-3"
 
 mkdir -p "$logDir"
 
@@ -33,13 +33,16 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
                         log_file="$logDir/$graphName-${core}-${vertices}-${solutions}-${timeLimit}-${objFunc}_${run}.txt"
 
                         # Build the full command
-                        full_command="./gradlew jar && master_memory=${memory}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} args=\"$args\" ./bin/fractal-custom-app.sh 2>&1 | tee \"$log_file\"  "
+                        full_command="./gradlew jar && master_memory=${memory}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} args=\"$args\" ./bin/fractal-custom-app.sh"
 
                         # Show the command being run
                         echo "$full_command"
 
                         # Execute the command
-                        eval "$full_command"
+                        eval "$full_command" > "$log_file" 2>&1
+
+			# Gzip the log file
+                        gzip "$log_file" && echo "Compressed: $log_file.gz"
 
                     done
                 done
