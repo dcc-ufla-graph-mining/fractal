@@ -3,6 +3,7 @@ package br.ufmg.cs.systems.fractal.apps
 import br.ufmg.cs.systems.fractal._
 import br.ufmg.cs.systems.fractal.aggregation.LongObjSubgraphAggregation
 import br.ufmg.cs.systems.fractal.computation.RandomWalkEnumerator
+import br.ufmg.cs.systems.fractal.optimization.VertexInducedOptimizationSubgraph.SerializableToDoubleFunction
 import br.ufmg.cs.systems.fractal.optimization._
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph
 import br.ufmg.cs.systems.fractal.util.Logging
@@ -17,7 +18,7 @@ case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
                            var cost: Double)
 
 class LocalSearchAggregation
-(objectiveFunction: ToDoubleFunction[VertexInducedOptimizationSubgraph],
+(objectiveFunction: SerializableToDoubleFunction[VertexInducedOptimizationSubgraph],
  vnsTimeLimitMs: Long)
   extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] with Logging {
 
@@ -55,8 +56,7 @@ class LocalSearchAggregation
   }
 }
 
-object DensityMass extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
-   with Serializable {
+object DensityMass extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
 
   def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
     val numEdges = subgraph.getNumEdges
@@ -75,8 +75,7 @@ object DensityMass extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
   }
 }
 
-object Conductance extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
-   with Serializable {
+object Conductance extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
 
   def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
     if (subgraph.getNumVertices == 1) return -1
@@ -99,8 +98,7 @@ object Conductance extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
 }
 
 
-object Modularity extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
-  with Serializable {
+object Modularity extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
 
   def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
     if (subgraph.getNumVertices == 1) return -1
@@ -120,13 +118,13 @@ object Modularity extends ToDoubleFunction[VertexInducedOptimizationSubgraph]
   }
 }
 
-object DenseSubgraph extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
+object DenseSubgraph extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
   override def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
     subgraph.getNumEdges / subgraph.getNumVertices.toDouble 
   }
 }
 
-object TriangleDensestSubgraph extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
+object TriangleDensestSubgraph extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
   override def applyAsDouble(subgraph: VertexInducedOptimizationSubgraph): Double = {
     var numTriangles = 0L
     val adjLists = subgraph.getAdjLists
@@ -150,8 +148,8 @@ object TriangleDensestSubgraph extends ToDoubleFunction[VertexInducedOptimizatio
   }
 }
 
-class DegreeEntropy extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
-  private lazy val degreeSumMap: IntIntMap = HashIntIntMaps.newMutableMap()
+class DegreeEntropy extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
+  @transient private lazy val degreeSumMap: IntIntMap = HashIntIntMaps.newMutableMap()
 
   private def log2(v: Double): Double = {
     Math.log(v) / Math.log(2)
@@ -182,7 +180,7 @@ class DegreeEntropy extends ToDoubleFunction[VertexInducedOptimizationSubgraph] 
 }
 
 
-class LabelEntropy extends ToDoubleFunction[VertexInducedOptimizationSubgraph] with Serializable {
+class LabelEntropy extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
   private lazy val labelSumMap: IntIntMap = HashIntIntMaps.newMutableMap()
 
   private def log2(v: Double): Double = {

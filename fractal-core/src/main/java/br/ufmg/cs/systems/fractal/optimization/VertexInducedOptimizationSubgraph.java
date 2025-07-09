@@ -4,7 +4,7 @@ import br.ufmg.cs.systems.fractal.graph.MainGraph;
 import br.ufmg.cs.systems.fractal.pattern.Pattern;
 import br.ufmg.cs.systems.fractal.pattern.PatternEdge;
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph;
-import br.ufmg.cs.systems.fractal.util.Logging;
+import br.ufmg.cs.systems.fractal.util.ReflectionSerializationUtils;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
@@ -15,10 +15,7 @@ import com.koloboke.collect.map.hash.HashIntObjMaps;
 import com.koloboke.function.IntIntConsumer;
 import com.koloboke.function.IntObjConsumer;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.io.*;
 import java.util.concurrent.*;
 import java.util.function.ToDoubleFunction;
 
@@ -46,8 +43,12 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
            new IntArrayListView();
 
    private transient final WriteExternalConsumer writerExternalConsumer = new WriteExternalConsumer();
-   transient private ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
    transient private String updateString;
+   transient private SerializableToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction;
+
+   public interface SerializableToDoubleFunction<T> extends ToDoubleFunction<T>, Serializable {
+
+   }
 
    public VertexInducedOptimizationSubgraph() {
    }
@@ -57,7 +58,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     * @param subgraph
     */
    public VertexInducedOptimizationSubgraph(VertexInducedSubgraph subgraph,
-                                            ToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction) {
+                                            SerializableToDoubleFunction<VertexInducedOptimizationSubgraph> objectiveFunction) {
       this.objectiveFunction = objectiveFunction;
       this.underlyingGraph = subgraph.getMainGraph();
       this.adjLists = HashIntObjMaps.newMutableMap();
@@ -98,7 +99,7 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
             return;
          }
 
-         target.objectiveFunction = this.objectiveFunction;
+         target.objectiveFunction = ReflectionSerializationUtils.clone(this.objectiveFunction); // Make a copy of original objective function
          target.underlyingGraph = this.getUnderlyingGraph();
 
          if (target.adjLists == null) {

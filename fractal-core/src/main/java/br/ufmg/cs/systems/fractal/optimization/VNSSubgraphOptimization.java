@@ -64,9 +64,9 @@ public class VNSSubgraphOptimization implements Logging {
           throw new RuntimeException("VNS run failed " + e.getCause());
       } catch (InterruptedException e) {
           throw new RuntimeException("VNS run interrupted " + e.getCause());
+      } finally {
+         logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
       }
-
-      logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
       return improvement;
    }
