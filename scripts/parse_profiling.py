@@ -36,7 +36,7 @@ def process_file(file_name):
 
             line = next(f).strip()
             while len(line) > 0 and line[0] == '[':
-                if 'VertexInducedOptimizationSubgraph.updateCost' in line:
+                if 'VertexInducedOptimizationSubgraph.recalculateCost' in line:
                     is_obj_function_call = True
                 line = next(f).strip()
 

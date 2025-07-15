@@ -14,9 +14,9 @@ objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "triangledenses
 repeats=5 # Number of times to repeat each run
 
 # Define graph and log dir
-graphDir="$HOME/graphs-data/dblp"
-graphName="dblp"
-logDir="$HOME/optimization-logs/scalability/temp/dblp-logs-3"
+graphDir="$HOME/graphs-data/livejournal"
+graphName="livejournal"
+logDir="$HOME/optimization-logs/scalability/temp/livejournal-logs"
 
 mkdir -p "$logDir"
 
