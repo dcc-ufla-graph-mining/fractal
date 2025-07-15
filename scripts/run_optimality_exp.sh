@@ -7,18 +7,18 @@ memory=50
 cores_lower=32       # threads lower limit
 cores_upper=32       # threads upper limit
 numInitVertices=(10)
-numInitSolutions=(100 1000)
+numInitSolutions=(100 1000 10000)
 seed=(-1)
 timeLimitMs=(1000 2000 3000)
-objectiveFunction=("conductance" "densesubgraph" "degreeentropy"  "triangledensestsubgraph") #labelentropy
+objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph") #labelentropy
 repeats=5 # Number of times to repeat each run
 
 # Define graph and log dir
 graphDir="$HOME/graphs-data/livejournal"
 graphName="livejournal"
-outputDir="$HOME/optimization-logs/experiments-2/profiling/temp/${graphName}"
+logDir="$HOME/optimization-logs/optimality/temp/livejournal-logs"
 
-mkdir -p "$outputDir"
+mkdir -p "$logDir"
 
 # Loop through all combinations
 for ((core=cores_lower; core<=$cores_upper; core++)); do
@@ -30,16 +30,19 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
 
                         # Build the args
                         args="$graphDir $vertices $solutions $seed $timeLimit $objFunc"
-                        outputFile="${graphName}-${core}-${vertices}-${solutions}-${timeLimit}-${objFunc}_${run}-profiling.txt"
+                        log_file="$logDir/$graphName-${core}-${vertices}-${solutions}-${timeLimit}-${objFunc}_${run}.txt"
 
                         # Build the full command
-                        full_command="./gradlew jar && master_memory=${memory}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} event=cpu file=\"$outputDir/$outputFile\" args=\"$args\" ./bin/fractal-custom-app-profiling.sh"
+                        full_command="./gradlew jar && master_memory=${memory}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} args=\"$args\" ./bin/fractal-custom-app.sh"
 
                         # Show the command being run
                         echo "$full_command"
 
                         # Execute the command
-                        eval "$full_command"
+                        eval "$full_command" > "$log_file" 2>&1
+
+			# Gzip the log file
+                        gzip "$log_file" && echo "Compressed: $log_file.gz"
 
                     done
                 done

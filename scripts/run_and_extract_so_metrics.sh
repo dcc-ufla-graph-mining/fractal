@@ -7,11 +7,12 @@ memory=50
 cores_lower=32       # threads lower limit
 cores_upper=32       # threads upper limit
 numInitVertices=(10)
-numInitSolutions=(100 1000)
+numInitSolutions=(1000)
 seed=(-1)
-timeLimitMs=(1000 2000 3000)
-objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph") #labelentropy
-repeats=5 # Number of times to repeat each run
+timeLimitMs=(3000) #2000 3000)
+objectiveFunction=("conductance")
+#(conductance densesubgraph degreeentropy triangledensestsubgraph) #labelentropy
+repeats=2 # Number of times to repeat each run
 
 # Define graph name and directory
 graphDir="$HOME/graphs-data/livejournal"
@@ -55,7 +56,7 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
                         echo "Spark process found with PID $spark_pid"
 
 			# Small delay to ensure process stability
-                        sleep 2
+ 
 
                         # Start monitoring scripts
                         ./scripts/so_metrics_pidstat.sh "$prefix" &
