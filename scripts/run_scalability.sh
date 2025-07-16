@@ -4,19 +4,19 @@ set -e
 
 # Define the variables
 memory=50
-cores_lower=32       # threads lower limit
+cores_lower=1       # threads lower limit
 cores_upper=32       # threads upper limit
 numInitVertices=(10)
-numInitSolutions=(100 1000 10000)
+numInitSolutions=(100)
 seed=(-1)
 timeLimitMs=(1000 2000 3000)
-objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph") #labelentropy
+objectiveFunction=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph" "labelentropy")
 repeats=5 # Number of times to repeat each run
 
 # Define graph and log dir
-graphDir="$HOME/graphs-data/livejournal"
-graphName="livejournal"
-logDir="$HOME/optimization-logs/optimality/temp/livejournal-logs"
+graphName="$1"
+graphDir="$HOME/graphs-data/${graphName}"
+logDir="$HOME/optimization-logs/experiments-2/scalability/temp/${graphName}"
 
 mkdir -p "$logDir"
 

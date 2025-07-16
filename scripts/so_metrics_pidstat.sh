@@ -2,6 +2,7 @@
 
 # Usage: ./monitor_spark_pidstat_direct_gz.sh [prefix]
 PREFIX="$1"
+OUTDIR="$2"
 
 # Find SparkSubmit Java process PID
 PID=$(pgrep -f "java.*SparkSubmit" | head -n 1)
@@ -12,9 +13,6 @@ if [ -z "$PID" ]; then
 fi
 
 echo "Monitoring SparkSubmit (PID=$PID) until it exits or is killed..."
-
-# Output directory
-OUTDIR="$HOME/optimization-logs/experiments-2/performance-metrics/temp/livejournal-2"
 
 mkdir -p "$OUTDIR"
 

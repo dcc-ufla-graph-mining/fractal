@@ -181,7 +181,7 @@ class DegreeEntropy extends SerializableToDoubleFunction[VertexInducedOptimizati
 
 
 class LabelEntropy extends SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] {
-  private lazy val labelSumMap: IntIntMap = HashIntIntMaps.newMutableMap()
+  @transient private lazy val labelSumMap: IntIntMap = HashIntIntMaps.newMutableMap()
 
   private def log2(v: Double): Double = {
     Math.log(v) / Math.log(2)
@@ -239,8 +239,10 @@ object VNSApp extends Logging {
     }
 
     // input graph
-    val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
-       .set("ws_external", false)
+    //val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
+    //   .set("ws_external", false)
+
+    val fgraph = fc.vertexLabeledGraphFromAdjLists(graphPath).set("ws_external", false)
 
     // materialize input graph
     fgraph.vfractoid.extend(1).aggregationCount

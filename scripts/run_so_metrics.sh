@@ -7,16 +7,17 @@ memory=50
 cores_lower=32       # threads lower limit
 cores_upper=32       # threads upper limit
 numInitVertices=(10)
-numInitSolutions=(1000)
+numInitSolutions=(100 1000)
 seed=(-1)
-timeLimitMs=(3000) #2000 3000)
-objectiveFunction=("conductance")
-#(conductance densesubgraph degreeentropy triangledensestsubgraph) #labelentropy
-repeats=2 # Number of times to repeat each run
+timeLimitMs=(1000 2000 3000)
+objectiveFunction= ("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph" "labelentropy")
+repeats=5 # Number of times to repeat each run
 
 # Define graph name and directory
-graphDir="$HOME/graphs-data/livejournal"
-graphName="livejournal"
+graphName="$1"
+graphDir="$HOME/graphs-data/${graphName}"
+outputDir="$HOME/optimization-logs/experiments-2/performance-metrics/temp/${graphName}"
+
 
 # Loop through all combinations
 for ((core=cores_lower; core<=$cores_upper; core++)); do
@@ -55,13 +56,10 @@ for ((core=cores_lower; core<=$cores_upper; core++)); do
 
                         echo "Spark process found with PID $spark_pid"
 
-			# Small delay to ensure process stability
- 
-
                         # Start monitoring scripts
-                        ./scripts/so_metrics_pidstat.sh "$prefix" &
+                        ./scripts/so_metrics_pidstat.sh "$prefix" "$outputDir" &
                         pidstat_pid=$!
-                        ./scripts/so_metrics_tma.sh "$prefix" &
+                      	 ./scripts/so_metrics_tma.sh "$prefix" "$outputDir" &
                         tma_pid=$!
 
                         # Wait for main Spark process to complete

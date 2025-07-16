@@ -10,12 +10,12 @@ numInitVertices=(10)
 numInitSolutions=(100 1000)
 seed=(-1)
 timeLimitMs=(1000 2000 3000)
-objectiveFunction=("conductance" "densesubgraph" "degreeentropy"  "triangledensestsubgraph") #labelentropy
+objectiveFunction=("conductance" "densesubgraph" "degreeentropy"  "triangledensestsubgraph" "labelentropy")
 repeats=5 # Number of times to repeat each run
 
 # Define graph and log dir
-graphDir="$HOME/graphs-data/livejournal"
-graphName="livejournal"
+graphName="$1"
+graphDir="$HOME/graphs-data/${graphName}"
 outputDir="$HOME/optimization-logs/experiments-2/profiling/temp/${graphName}"
 
 mkdir -p "$outputDir"

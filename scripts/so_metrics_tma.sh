@@ -4,6 +4,7 @@
 # Usage: ./perf_stat_monitor.sh [prefix]
 
 PREFIX="$1"
+OUTDIR="$2"
 PID=$(pgrep -f "SparkSubmit" | head -n 1)
 
 if [ -z "$PID" ]; then
@@ -14,7 +15,6 @@ fi
 echo "Monitoring SparkSubmit (PID=$PID) until exit"
 echo
 
-OUTDIR="$HOME/optimization-logs/experiments-2/performance-metrics/temp/livejournal-2"
 mkdir -p "$OUTDIR"
 
 FBASE="${OUTDIR}/${PREFIX:+${PREFIX}_}"
