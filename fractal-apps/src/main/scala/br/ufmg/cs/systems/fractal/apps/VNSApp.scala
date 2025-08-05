@@ -237,12 +237,20 @@ object VNSApp extends Logging {
       case _ =>
           throw new RuntimeException(s"Invalid objective function: ${args(5)}")
     }
+    val graphLabelType =
+      if (args.length == 7 && args(6).nonEmpty) args(6).toLowerCase
+      else "unlabeled"
 
-    // input graph
-    //val fgraph = fc.unlabeledGraphFromAdjLists(graphPath)
-    //   .set("ws_external", false)
-
-    val fgraph = fc.vertexLabeledGraphFromAdjLists(graphPath).set("ws_external", false)
+    val fgraph = graphLabelType match{
+      case "unlabeled" =>
+        fc.unlabeledGraphFromAdjLists(graphPath).set("ws_external", false)
+      case "vertexlabeled" =>
+        fc.vertexLabeledGraphFromAdjLists(graphPath).set("ws_external", false)
+      case "vertexedgelabeled" =>
+        fc.vertexEdgeLabeledGraphFromAdjLists(graphPath).set("ws_external", false)
+      case _ =>
+        throw new RuntimeException(s"Invalid graph label type: ${graphLabelType}. Use: unlabeled|vertexlabeled|vertexedgelabeled")
+    }
 
     // materialize input graph
     fgraph.vfractoid.extend(1).aggregationCount
