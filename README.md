@@ -4,6 +4,7 @@
 
 This document provides instructions to reproduce the experiments from the paper
 
+### Environment Variables
 Please ensure that the environment variables are correctly exported as described in README-fractal.md:
 
 - JAVA_HOME points to an OpenJDK 8 installation  
@@ -33,14 +34,14 @@ args="<input_graph> <vertices> <solutions> <seed> <time_limit> <objective_functi
 
 #### Parameters:
 
-- <master_memory>: Maximum memory allowed for the coordinator node (e.g., 8g, 16g)
-- <worker_cores>: Number of processing threads (virtual cores) to be used
-- <input_graph>: Path to the input graph directory (e.g., data/dblp)
-- <vertices>: Number of vertices for each initial solution (subgraph)
-- <solutions>: Number of initial solutions to generate
-- <seed>: Seed used to generate initial solutions (-1 indicates a random seed)
-- <time_limit>: Time limit (in milliseconds) for each VNS run
-- <objective_function>: Name of the objective function to be optimized (defined on VNSApp class)
+- ```<master_memory>```: Maximum memory allowed for the coordinator node (e.g., 8g, 16g)
+- ```<worker_cores>```: Number of processing threads (virtual cores) to be used
+- ```<input_graph>```: Path to the input graph directory (e.g., data/dblp)
+- ```<vertices>```: Number of vertices for each initial solution (subgraph)
+- ```<solutions>```: Number of initial solutions to generate
+- ```<seed>```: Seed used to generate initial solutions (-1 indicates a random seed)
+- ```<time_limit>```: Time limit (in milliseconds) for each VNS run
+- ```<objective_function>```: Name of the objective function to be optimized (defined on VNSApp class)
 
 Implemented objective functions include:
 - conductance (Conductance)
