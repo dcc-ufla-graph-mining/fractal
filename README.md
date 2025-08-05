@@ -1,142 +1,76 @@
-# Fractal: A General-Purpose Graph Pattern Mining System
+Reproducibility Guide
 
-[![Build Gradle project](https://github.com/dccspeed/fractal/actions/workflows/build-gradle-project.yml/badge.svg)](https://github.com/dccspeed/fractal/actions/workflows/build-gradle-project.yml)
+This document provides instructions to reproduce the experiments from the paper
+"An Experimental Study of Variable Neighborhood Search for General-Purpose Subgraph Optimization in Parallel Systems".
+Prerequisites
 
-Fractal is a high performance and high productivity system for supporting distributed graph
-pattern mining (GPM) applications. Our current version is tested on Spark 3.5.0.
-Fractal features include:
-* Interactive and intuitive API specifically designed for Graph Pattern Mining.
-* Scalable and efficient.
-* Efficient integration with RDD abstraction.
+Please ensure that the environment variables are correctly exported as described in README-fractal.md:
 
-Fractal is open-source with the Apache 2.0 license.
+    JAVA_HOME points to an OpenJDK 8 installation
 
-## Research papers
+    SPARK_HOME points to your Apache Spark installation
 
-* [v1.0.0](https://github.com/dccspeed/fractal/releases/tag/v1.0.0) : Fractal: A General-Purpose Graph Pattern Mining System ([SIGMOD '19](https://dl.acm.org/citation.cfm?id=3319875)).
-* [v2.0.0](https://github.com/dccspeed/fractal/releases/tag/v2.0.0) : Graph Pattern Mining: Consolidation and Renewed Bearing ([HiPC '23](https://)).
-* [v3.0.0](https://github.com/dccspeed/fractal): Current version: support for Spark 3.0 and Java 11.
+    FRACTAL_HOME points to the root directory of the Fractal system
 
-## Requirements for running
+Setup Instructions
 
-* OpenJDK 8 or 11
-* Spark 3.5.0
+    Clone the Fractal repository (branch sscad2025):
 
-## Preparing your input
-Fractal currently takes as input undirected labeled graph stored in a 
-directory:
+    git clone -b sscad2025 git@github.com:dcc-ufla-graph-mining/fractal.git
 
-* (mandatory) ```graph/metadata```: single line containing the number of 
-vertices (```n```) and the number edges (```m```) in the graph separated by 
-a single space.
-* (mandatory) ```graph/adjlists```: each line ```u = 0..n-1``` holds the 
-adjacency list of vertex ```u```. Each item in this list is a pair
-```(v,e)``` representing respectively, neighbor vertex ```v``` and edge id ```e```. 
-Edge ids are also represented as indexes ```e = 0..m-1```
-* (optional) ```graph/vlabels```: line ```i``` holds the label of vertex 
-```i```.
-* (optional) ```graph/elabels```: line ```i``` holds the label of edge
-  ```i```.
+    Build the system by following the steps in README-fractal.md.
 
-Example: directory ```data/citeseer``` illustrates a valid formatting.
+    Download input graphs used in the experiments:
 
-## Quick start with interactive notebook via Docker (local)
+        [Input Graphs on Google Drive](https://drive.google.com/drive/folders/1VLs8mpsqono2Q6FWq4Fj13grKLZ2uJSN)
 
-Run the following command to build a local Docker image that runs an Almond Scala/Spark Kernel Notebook with support
-for Fractal:
+Running the System
 
-```
-docker buildx build --output type=docker --tag fractalnb -f notebook/Dockerfile https://github.com/dccspeed/fractal.git
-```
+To run the system and reproduce an experiment, use the following command:
 
-Run the container:
-
-```
-docker run -it --rm -p 8888:8888 fractalnb:latest
-```
-
-The local URL for accessing the notebook kernel should appear in the output.
-Notebook examples are provided in ```notebook/```
-
-## Quick installation via Docker (local)
-
-We provide a Docker image for this project. Run the following command to build a local Docker image:
-```
-docker buildx build --output type=docker --tag fractal https://github.com/dccspeed/fractal.git
-```
-
-### Running built-in applications
-
-For a list and description regarding built-in applications:
-
-```
-docker run fractal:latest
-```
-
-Data folder with input graphs can be mounted via Docker volumes (```-v```). Arguments to Fractal runner are passed via 
-Docker environment variables (```-e```). For example, the following command submit a Pattern-oblivious motif counting
-application as a Docker container:
-
-```
-docker run -v ./data/:/data -e app=motifs_po -e steps=3 -e inputgraph=/data/citeseer fractal:latest
-```
-
-## Manual installation (distributed)
-
-1. Download and configure Spark 3.5.0:
-
-```
-export JAVA_HOME=<openjdk-8-installation-folder>
-wget https://archive.apache.org/dist/spark/spark-3.5.0/spark-3.5.0-bin-hadoop3-scala2.13.tgz
-tar xf spark-3.5.0-bin-hadoop3-scala2.13.tgz
-mv spark-3.5.0-bin-hadoop3-scala2.13 spark
-cd spark
-export SPARK_HOME=`pwd` 
-```
-
-2. Clone and build Fractal:
-```
-git clone https://github.com/dccspeed/fractal.git # or direct download
-cd fractal
-export FRACTAL_HOME=`pwd`
-./gradlew jar # download dependencies and build the project
-./gradlew test # run tests
-```
-
-### Running built-in applications
-
-For a list and description regarding built-in applications:
-
-```$xslt
-./bin/fractal.sh
-```
-
-### Running custom applications
-
-You can also implement your own application using Fractal API. We provide the subproject 
-"fractal-apps" to make this process easier. All you need to do is to add your application class
-into ```fractal-apps/src/```, re-compile the project with ```./gradlew jar```, and run your
-code with the ```bin/fractal-custom-app.sh``` script:
-
-```
+./gradlew jar && \
+master_memory=<master_memory> \
+app_class=br.ufmg.cs.systems.fractal.apps.VNSApp \
+worker_cores=<worker_cores> \
+args="<input_graph> <vertices> <solutions> <seed> <time_limit> <objective_function>" \
 ./bin/fractal-custom-app.sh
-```
 
-Please, refer to
-```fractal-apps/src/main/scala/br/ufmg/cs/systems/fractal/apps/```
-for an example.
+Parameters:
 
-Next, we re-compile the project with ```./gradlew jar``` and run the
- application over
-the dataset ```data/citeseer```:
+    <master_memory>: Maximum memory allowed for the coordinator node (e.g., 8g, 16g)
 
-```
-args=data/citeseer app_class=br.ufmg.cs.systems.fractal.apps.MyMotifsApp ./bin/fractal-custom-app.sh
-```
+    <worker_cores>: Number of processing threads (virtual cores) to be used
 
-## External software acknowledgements
+    <input_graph>: Path to the input graph directory (e.g., data/dblp)
 
-The following open-source projects are used in Fractal:
+    <vertices>: Number of vertices for each initial solution (subgraph)
 
-- [Bliss](http://www.tcs.hut.fi/Software/bliss/)
-- [AsyncProfiler](https://github.com/jvm-profiling-tools/async-profiler)
+    <solutions>: Number of initial solutions to generate
+
+    <seed>: Seed used to generate initial solutions (-1 indicates a random seed)
+
+    <time_limit>: Time limit (in milliseconds) for each VNS run
+
+    <objective_function>: Name of the objective function to be optimized (defined on VNSApp class)
+    Implemented objective functions include:
+
+        densesubgraph (Densest Subgraph)
+
+        triangledensestsubgraph (Triangle Densest Subgraph)
+
+        conductance (Conductance)
+
+        degreeentropy (Degree Entropy)
+
+        labelentropy (Label Entropy)
+
+Example:
+
+./gradlew jar && \
+master_memory=20g \
+app_class=br.ufmg.cs.systems.fractal.apps.VNSApp \
+worker_cores=16 \
+args="data/dblp 10 100 -1 1000 densesubgraph" \
+./bin/fractal-custom-app.sh
+
+This will run the Densest Subgraph objective function on the dblp graph, using 16 cores, with 100 initial solutions of size 10, a random seed, and a 1-second time limit per solution.
