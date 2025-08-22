@@ -79,21 +79,25 @@ The repository includes automation scripts to reproduce all experiments from the
 ```bash
 # Usage: ./scripts/run-scripts/run_optimality.sh [graph_label_type] [graph_directory]
 ./scripts/run-scripts/run_optimality.sh vertexlabeled $HOME/graphs-data/youtube
+```
 
 #### Scalability Experiments
 ```bash
 # Usage: ./scripts/run-scripts/run_scalability.sh [graph_label_type] [graph_directory]
 ./scripts/run-scripts/run_scalability.sh vertexlabeled $HOME/graphs-data/amazon
+```
 
 #### CPU Performance Experiments
 ```bash
 # Usage: ./scripts/run-scripts/run_so_metrics.sh [graph_label_type] [graph_directory] 
 ./scripts/run-scripts/run_so_metrics.sh vertexlabeled $HOME/graphs-data/citeseer
+```
 
 #### Profiling Experiments
 ```bash
 # Usage: ./scripts/run-scripts/run_profiling.sh [graph_label_type] [graph_directory]
 ./scripts/run-scripts/run_profiling.sh vertexlabeled $HOME/graphs-data/patents
+```
 
 Each script generates compressed log files in the optimization-logs/ directory with detailed results for analysis.
 
@@ -102,3 +106,4 @@ To run all experiments for multiple graphs sequentially, use the following comma
 
 ```bash
 ./scripts/run_experiments_scripts.sh
+```
