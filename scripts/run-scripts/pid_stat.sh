@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./monitor_spark_pidstat_direct_gz.sh [prefix]
+# Usage: ./so_metrics_pidstat.sh [prefix] [output_directory]
 PREFIX="$1"
 OUTDIR="$2"
 

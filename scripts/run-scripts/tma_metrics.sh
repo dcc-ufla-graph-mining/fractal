@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-# Usage: ./perf_stat_monitor.sh [prefix]
+# Usage: ./so_metrics_tma.sh [prefix] [output_directory]
 
 PREFIX="$1"
 OUTDIR="$2"

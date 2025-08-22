@@ -20,7 +20,7 @@ Please ensure that the environment variables are correctly exported as described
 
 2. Build the system by following the steps in ```$FRACTAL_HOME/README-fractal.md```.
 
-3.  Download [input graphs from GDrive](https://drive.google.com/drive/folders/1VLs8mpsqono2Q6FWq4Fj13grKLZ2uJSN) and place the content on ```$FRACTAL_HOME_```
+3.  Download [input graphs from GDrive](https://drive.google.com/drive/folders/1VLs8mpsqono2Q6FWq4Fj13grKLZ2uJSN) and place the content on ```$FRACTAL_HOME/data```
 
 ### Running the System
 
@@ -69,4 +69,36 @@ args="data/dblp 10 100 -1 1000 densesubgraph unlabeled" \
 ./bin/fractal-custom-app.sh
 ```
 
-This example runs the `Densest Subgraph` objective function on the `dblp` graph, using 16 cores, with 100 initial solutions of size 10, a random seed, a 1-second time limit per solution and assumes the graph has no labels.
+This example runs the `Densest Subgraph` objective function on the `dblp` graph, using `16 cores`, with `100 initial solutions` of `size 10`, a `random seed`, a `1-second time limit` per solution and assumes the graph has `no labels`.
+
+### Experiment Scripts
+
+The repository includes automation scripts to reproduce all experiments from the paper:
+
+#### Optimality Experiments
+```bash
+# Usage: ./scripts/run-scripts/run_optimality.sh [graph_label_type] [graph_directory]
+./scripts/run-scripts/run_optimality.sh vertexlabeled $HOME/graphs-data/youtube
+
+#### Scalability Experiments
+```bash
+# Usage: ./scripts/run-scripts/run_scalability.sh [graph_label_type] [graph_directory]
+./scripts/run-scripts/run_scalability.sh vertexlabeled $HOME/graphs-data/amazon
+
+#### CPU Performance Experiments
+```bash
+# Usage: ./scripts/run-scripts/run_so_metrics.sh [graph_label_type] [graph_directory] 
+./scripts/run-scripts/run_so_metrics.sh vertexlabeled $HOME/graphs-data/citeseer
+
+#### Profiling Experiments
+```bash
+# Usage: ./scripts/run-scripts/run_profiling.sh [graph_label_type] [graph_directory]
+./scripts/run-scripts/run_profiling.sh vertexlabeled $HOME/graphs-data/patents
+
+Each script generates compressed log files in the optimization-logs/ directory with detailed results for analysis.
+
+#### Run All Experiments
+To run all experiments for multiple graphs sequentially, use the following command:
+
+```bash
+./scripts/run_experiments_scripts.sh
