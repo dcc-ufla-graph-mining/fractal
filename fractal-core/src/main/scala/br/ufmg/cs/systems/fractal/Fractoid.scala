@@ -17,6 +17,8 @@ import org.apache.spark.rdd.RDD
 
 import scala.reflect.{ClassTag, classTag}
 
+import scala.annotation.tailrec
+
 /**
  * Fractal workflow state.
  */
@@ -930,7 +932,7 @@ case class Fractoid[S <: Subgraph : ClassTag]
     * @param senumClass subgraph enumerator class
     * @return new result
     */
-   def extend(n: Int, senumClass: Class[_ <: SubgraphEnumerator[S]])
+   @tailrec final def extend(n: Int, senumClass: Class[_ <: SubgraphEnumerator[S]])
    : Fractoid[S] = {
       logDebug(s"Expand fractoid=${this} n=${n}")
       // base step, no effect

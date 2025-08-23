@@ -723,7 +723,7 @@ jars=${jars:-""}
 uienabled=${uienabled:-false}
 app_class=${app_class:-br.ufmg.cs.systems.fractal.FractalSparkRunner}
 packages="com.koloboke:koloboke-impl-jdk8:1.0.0,com.typesafe.akka:akka-remote_2.13:2.5.23"
-extrajavaoptions="\"-Dlog4j.configuration=file://$FRACTAL_HOME/conf/log4j.properties ${PROFILER_OPTIONS}\""
+extrajavaoptions="\"$extrajavaoptions -Dlog4j.configuration=file://$FRACTAL_HOME/conf/log4j.properties ${PROFILER_OPTIONS}\""
 args=${args:-"$labeling $inputgraph $app $total_cores $steps $log_level $steptimelimit $timelimit $induced $fsmsupp $mindensity $query $plabeling $fraction $periodicthreshold $labelsset $gfiltering $budget $seed $topk $outputdir $outputpath $configs"}
 
 cmd="$SPARK_HOME/bin/spark-submit --master $spark_master \\

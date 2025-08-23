@@ -1,13 +1,13 @@
 package br.ufmg.cs.systems.fractal.computation
 
 import java.util.concurrent.atomic.AtomicInteger
-
 import br.ufmg.cs.systems.fractal.Primitive
 import br.ufmg.cs.systems.fractal.computation.vertexinduced.VertexInducedComputation
 import br.ufmg.cs.systems.fractal.conf.Configuration
 import br.ufmg.cs.systems.fractal.pattern.Pattern
 import br.ufmg.cs.systems.fractal.subgraph._
 import br.ufmg.cs.systems.fractal.util.Logging
+import br.ufmg.cs.systems.fractal.util.collection.ObjArrayList
 
 import scala.collection.mutable.Stack
 
@@ -37,12 +37,11 @@ sealed trait ComputationContainer [S <: Subgraph] extends Computation[S]
    val nextComputationOpt: Option[Computation[S]]
 
    @transient lazy val lastComputationContainer: ComputationContainer[S] = {
-      nextComputationOpt match {
-         case Some(nextComputation: ComputationContainer[S]) =>
-            nextComputation.lastComputationContainer
-         case _ =>
-            this
+      var lastComputation = this
+      while (lastComputation.nextComputationOpt.isDefined) {
+         lastComputation = lastComputation.nextComputationOpt.get.asInstanceOf[ComputationContainer[S]]
       }
+      lastComputation
    }
 
    override def lastComputation(): Computation[S] = lastComputationContainer
@@ -485,15 +484,24 @@ case class VComputationContainer [S <: VertexInducedSubgraph]
       lastComp
    }
 
-   def withComputationAppended(lastComputation: Computation[S])
-   : ComputationContainer[S] = nextComputationOpt match {
-      case Some(nextComputation) =>
-         val container = nextComputation.asInstanceOf[ComputationContainer[S]]
-         val _nextComputation = container.
-            withComputationAppended(lastComputation)
-         this.copy(nextComputationOpt = Option(_nextComputation))
-      case None =>
-         this.copy(nextComputationOpt = Option(lastComputation))
+   def withComputationAppended(lastComputation: Computation[S]): ComputationContainer[S] = {
+      val computations = new ObjArrayList[VComputationContainer[S]]()
+      var currentComputation = this.asInstanceOf[VComputationContainer[S]]
+      while (currentComputation != null) {
+         computations.add(currentComputation)
+         currentComputation = currentComputation.nextComputationOpt.getOrElse(null).asInstanceOf[VComputationContainer[S]]
+      }
+
+      var i = computations.size() - 1
+      currentComputation = computations.get(i)
+      currentComputation = currentComputation.copy(nextComputationOpt = Option(lastComputation))
+      i -= 1
+      while (i >= 0) {
+         currentComputation = computations.get(i).copy(nextComputationOpt = Option(currentComputation))
+         i -= 1
+      }
+
+      currentComputation
    }
 
    def withPrimitive(p: Primitive): ComputationContainer[S] = {
