@@ -1,6 +1,7 @@
-package br.ufmg.cs.systems.fractal.optimization;
+package br.ufmg.cs.systems.fractal.optimization.neighborhood;
 
-import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
+import br.ufmg.cs.systems.fractal.optimization.OptimizationUtils;
+import br.ufmg.cs.systems.fractal.optimization.VertexInducedOptimizationSubgraph;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
@@ -16,7 +17,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       adjLists = subgraph.getAdjLists();
 
       // Get the non-articulation vertices
-      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+      if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
          return false;
       }
 
@@ -46,13 +47,13 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       adjLists = subgraph.getAdjLists();
 
       // Get the non-articulation vertices
-      if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+      if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
          return;
       }
 
       // Generate a random vertex index
       int numVertices = nonArticulationVertices.size();
-      int randomVertexIndex = VNSSubgraphOptimization.getRandomInt(numVertices);
+      int randomVertexIndex = OptimizationUtils.getRandomInt(numVertices);
 
       // Get the random vertex to be removed
       IntCursor cur = nonArticulationVertices.cursor();

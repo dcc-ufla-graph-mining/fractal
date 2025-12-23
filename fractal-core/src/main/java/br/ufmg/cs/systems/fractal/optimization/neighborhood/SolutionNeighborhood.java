@@ -1,5 +1,6 @@
-package br.ufmg.cs.systems.fractal.optimization;
+package br.ufmg.cs.systems.fractal.optimization.neighborhood;
 
+import br.ufmg.cs.systems.fractal.optimization.VertexInducedOptimizationSubgraph;
 import br.ufmg.cs.systems.fractal.util.Logging;
 
 public interface SolutionNeighborhood extends Logging {

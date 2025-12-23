@@ -1,15 +1,13 @@
-package br.ufmg.cs.systems.fractal.optimization;
+package br.ufmg.cs.systems.fractal.optimization.neighborhood;
 
-import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
+import br.ufmg.cs.systems.fractal.optimization.OptimizationUtils;
+import br.ufmg.cs.systems.fractal.optimization.VertexInducedOptimizationSubgraph;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 
 public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
@@ -23,7 +21,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         double initialCost = subgraph.getCost();
 
         // Get the keys of the vertices in the subgraph
-        if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
+        if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
             return false;
         }
 
@@ -34,7 +32,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
             int numNeighbors = vertexNeighborhood.size();
 
-            int neighborsOffset = VNSSubgraphOptimization.getRandomInt(numNeighbors);   // Generate a random offset for the neighbors indices
+            int neighborsOffset = OptimizationUtils.getRandomInt(numNeighbors);   // Generate a random offset for the neighbors indices
             for (int j = 0; j < numNeighbors; j++) {
                 int neighborIndex = (neighborsOffset + j) % numNeighbors;   // Calculate next neighbor index
                 int neighbor = vertexNeighborhood.get(neighborIndex);
@@ -60,7 +58,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         adjLists = subgraph.getAdjLists();
 
         // Get the keys of the vertices in the subgraph
-        if (!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists))
+        if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists))
             return;
 
         int count = 0;  // Variable to count the number of attempts to add a random vertex to prevent loops
@@ -73,7 +71,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             count++;
 
             // Get a random vertex from the subgraph
-            int randomVertexIndex = VNSSubgraphOptimization.getRandomInt(numVertices);
+            int randomVertexIndex = OptimizationUtils.getRandomInt(numVertices);
             IntCursor cur = subgraphVertices.cursor();
             for(int i = 0; i <= randomVertexIndex; i++) {
                 cur.moveNext();
@@ -86,7 +84,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             if (numNeighbors == 0) {
                 continue;
             }
-            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(numNeighbors);
+            int randomNeighborIndex = OptimizationUtils.getRandomInt(numNeighbors);
             int randomNeighbor = vertexNeighborhood.get(randomNeighborIndex);
 
             // Verifies if the neighbor is not in the subgraph
@@ -100,13 +98,13 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         if (!vertexAdded) {
             // Get all the neighbors of the subgraph vertices that it is not already in the subgraph
             IntSet neighborsNotInSubgraph = HashIntSets.newMutableSet();
-            if(!VNSSubgraphOptimization.getSubgraphNeighbors(subgraph, adjLists, neighborsNotInSubgraph, subgraphVertices, vertexNeighborhood)) {
+            if(!OptimizationUtils.getSubgraphNeighbors(subgraph, adjLists, neighborsNotInSubgraph, subgraphVertices, vertexNeighborhood)) {
                 return;
             }
 
             // Get a random neighbor not in the subgraph
             int neighborsSize = neighborsNotInSubgraph.size();
-            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(neighborsSize);
+            int randomNeighborIndex = OptimizationUtils.getRandomInt(neighborsSize);
             IntCursor cur = neighborsNotInSubgraph.cursor();
             for(int i = 0; i <= randomNeighborIndex; i++) {
                 cur.moveNext();

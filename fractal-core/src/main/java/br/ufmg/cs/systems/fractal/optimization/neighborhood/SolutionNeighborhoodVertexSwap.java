@@ -1,6 +1,7 @@
-package br.ufmg.cs.systems.fractal.optimization;
+package br.ufmg.cs.systems.fractal.optimization.neighborhood;
 
-import br.ufmg.cs.systems.fractal.util.collection.IntArrayList;
+import br.ufmg.cs.systems.fractal.optimization.OptimizationUtils;
+import br.ufmg.cs.systems.fractal.optimization.VertexInducedOptimizationSubgraph;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
@@ -8,7 +9,7 @@ import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.set.IntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
 
-public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
+public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
     private IntObjMap<IntIntMap> adjLists;     // Adjacency lists of the subgraph vertices
     private final IntSet nonArticulationVertices = HashIntSets.newMutableSet();     // List containing the non-articulation vertices of the subgraph
     private final IntSet subgraphVertices = HashIntSets.newMutableSet();            // List of vertices in the subgraph
@@ -19,11 +20,11 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
         adjLists = subgraph.getAdjLists();
 
         // Get the subgraph vertices
-        if(!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists)) {
+        if(!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
             return false;
         }
         // Get the non-articulation vertices
-        if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+        if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
             return false;
         }
 
@@ -44,7 +45,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
                 if (vertex != vertexToRemove) {
                     subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
                     int neighborhoodSize = vertexNeighborhood.size();
-                    int neighborsOffset = VNSSubgraphOptimization.getRandomInt(neighborhoodSize);    // Generate a random offset to the neighbor index
+                    int neighborsOffset = OptimizationUtils.getRandomInt(neighborhoodSize);    // Generate a random offset to the neighbor index
 
                     for (int i = 0; i < neighborhoodSize; i++) {
                         int neighborIndex = (neighborsOffset + i) % neighborhoodSize;
@@ -76,15 +77,15 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
         adjLists = subgraph.getAdjLists();
 
         // Get the subgraph vertices
-        if(!VNSSubgraphOptimization.getSubgraphVertices(subgraphVertices, adjLists))
+        if(!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists))
             return;
         // Get the non-articulation vertices
-        if(!VNSSubgraphOptimization.getNonArticulationVertices(nonArticulationVertices, adjLists))
+        if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists))
             return;
 
         // Get a random vertex to be removed
         int numNonArticulation = nonArticulationVertices.size();
-        int randomVertexToRemoveIndex = VNSSubgraphOptimization.getRandomInt(numNonArticulation);
+        int randomVertexToRemoveIndex = OptimizationUtils.getRandomInt(numNonArticulation);
         IntCursor cur = nonArticulationVertices.cursor();
         for (int i = 0; i <= randomVertexToRemoveIndex; i++) {
             cur.moveNext();
@@ -101,7 +102,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             count++;
 
             // Get a random vertex from the subgraph
-            int randomSubgraphVertexIndex = VNSSubgraphOptimization.getRandomInt(numSubgraphVertices);
+            int randomSubgraphVertexIndex = OptimizationUtils.getRandomInt(numSubgraphVertices);
             cur = subgraphVertices.cursor();
             for(int i = 0; i < numSubgraphVertices; i++) {
                 cur.moveNext();
@@ -119,7 +120,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
             if(numNeighbors == 0) {
                 continue;
             }
-            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(numNeighbors);
+            int randomNeighborIndex = OptimizationUtils.getRandomInt(numNeighbors);
             int randomNeighborToAdd = vertexNeighborhood.get(randomNeighborIndex);
 
             // Checks if the random neighbor it is not the vertex to be removed
@@ -138,13 +139,13 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood{
         if(!verticesSwapped) {
             // Get all the neighbors of the subgraph vertices that it is not already in the subgraph
             IntSet neighborsNotInSubgraph = HashIntSets.newMutableSet();
-            if(!VNSSubgraphOptimization.getSubgraphNeighbors(subgraph, adjLists, neighborsNotInSubgraph, subgraphVertices, vertexNeighborhood)) {
+            if(!OptimizationUtils.getSubgraphNeighbors(subgraph, adjLists, neighborsNotInSubgraph, subgraphVertices, vertexNeighborhood)) {
                 return;
             }
 
             // Get a random neighbor not in the subgraph
             int neighborsSize = neighborsNotInSubgraph.size();
-            int randomNeighborIndex = VNSSubgraphOptimization.getRandomInt(neighborsSize);
+            int randomNeighborIndex = OptimizationUtils.getRandomInt(neighborsSize);
             cur = neighborsNotInSubgraph.cursor();
             for(int i = 0; i < neighborsSize; i++) {
                 cur.moveNext();
