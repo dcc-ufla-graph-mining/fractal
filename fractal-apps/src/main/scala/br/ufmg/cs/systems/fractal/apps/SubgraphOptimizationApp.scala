@@ -225,16 +225,10 @@ object SubgraphOptimizationApp extends Logging {
     // environment setup (Spark)
     val fc = new FractalContext(sc)
 
-    val seed = args(0).toInt // -1 means: start with a random seed
-    val numSamples = args(1).toInt // target number of initial solutions via random walk (no guarantee to be exactly that)
-    val numVertices = args(2).toInt // number of vertices in the subgraphs
-    val metaheuristic = args(3) match {
-      case "vns" => VNS
-      case "ils" => ILS
-      case "ts" => TS
-      case _ =>
-        throw  new RuntimeException(s"Invalid metaheuristic: ${args(3)}")
-    }
+    val graphPath = args(0) // input graph
+    val numVertices = args(1).toInt // number of vertices in the subgraphs
+    val numSamples = args(2).toInt // target number of initial solutions via random walk (no guarantee to be exactly that)
+    val seed = args(3).toInt // -1 means: start with a random seed
     val timeLimitMs = args(4).toLong
     val objectiveFunction = args(5) match {
       case "densitymass" => DensityMass
@@ -247,7 +241,13 @@ object SubgraphOptimizationApp extends Logging {
       case _ =>
         throw new RuntimeException(s"Invalid objective function: ${args(5)}")
     }
-    val graphPath = args(6) // input graph
+    val metaheuristic = args(6) match {
+      case "vns" => VNS
+      case "ils" => ILS
+      case "ts" => TS
+      case _ =>
+        throw  new RuntimeException(s"Invalid metaheuristic: ${args(3)}")
+    }
     val graphLabelType =
       if (args.length == 8 && args(7).nonEmpty) args(7).toLowerCase
       else "unlabeled"
