@@ -14,13 +14,14 @@ SEED=-1
 TIME_LIMIT_MS=(1000 2000 3000)
 OBJECTIVE_FUNCTIONS=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph" "labelentropy")
 GRAPH_LABEL="$1"
+METAHEURISTIC="$3"
 
 REPEATS=5 # Number of times to repeat the experiment for each combination of variables 
 
 # Define graph and log dir
 GRAPH_DIR="$2"
 GRAPH_NAME=$(basename "$GRAPH_DIR")      # Extract last directory name
-LOG_DIR="optimization-logs/scalability/${GRAPH_NAME}"
+LOG_DIR="optimization-logs/ccpe2026/scalability/${METAHEURISTIC}/${GRAPH_NAME}"
 
 # Validate graph directory exists
 if [ ! -d "$GRAPH_DIR" ]; then
@@ -31,7 +32,6 @@ fi
 # Create log directory
 mkdir -p "$LOG_DIR"
 
-
 # Loop script start
 for ((core=$CORES_LOWER; core<=$CORES_UPPER; core++)); do
     for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
@@ -41,11 +41,11 @@ for ((core=$CORES_LOWER; core<=$CORES_UPPER; core++)); do
                     for run in $(seq 1 $REPEATS); do
 
                         # Build the arguments and log filename
-                        ARGS="$GRAPH_DIR $vertices $solutions $SEED $timeLimit $objFunc $GRAPH_LABEL"
-                        LOG_FILE="$LOG_DIR/$GRAPH_NAME-${core}-${vertices}-${solutions}-${timeLimit}-${objFunc}-$GRAPH_LABEL-${run}.txt"
+                        ARGS="$GRAPH_DIR $vertices $solutions $SEED $timeLimit $objFunc $METAHEURISTIC $GRAPH_LABEL"
+                        LOG_FILE="$LOG_DIR/$GRAPH_NAME-$METAHEURISTIC-${core}-${vertices}-${solutions}-${timeLimit}-${objFunc}-$GRAPH_LABEL-${run}.txt"
 
                         # Build the full command
-                        EXEC_COMMAND="./gradlew jar && master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.VNSApp worker_cores=${core} args=\"$ARGS\" ./bin/fractal-custom-app.sh"
+                        EXEC_COMMAND="./gradlew jar && master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${core} args=\"$ARGS\" ./bin/fractal-custom-app.sh"
 
                         # Show the command being run
                         echo "$EXEC_COMMAND"

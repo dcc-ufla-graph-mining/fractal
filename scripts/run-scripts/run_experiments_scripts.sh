@@ -4,8 +4,9 @@ cd ~/fractal-private || { echo "Error: fractal-private directory not found."; ex
 
 # Define the graphs
 GRAPHS_DIRECTORY="$HOME/graphs-data/"
-GRAPHS=("citeseer" "patents" "youtube")
-GRAPHS_LABEL_TYPE="vertexlabeled"
+GRAPHS=("citeseer" "amazon" "dblp" "patents" "livejournal" "youtube")
+GRAPHS_LABEL_TYPE=("vertexlabeled" "unlabeled" "unlabeled" "vertexlabeled" "unlabeled" "vertexlabeled" )
+METAHEURISTIC = "ils"
 
 # List of scripts to run
 SCRIPTS=("run_optimality.sh" "run_scalability.sh" "run_so_metrics.sh" "run_profiling.sh")
@@ -22,7 +23,7 @@ for graph in "${GRAPHS[@]}"; do
 	# Run each script for the current graph
 	for script in "${SCRIPTS[@]}"; do
 		echo "Running $script for $graph..."
-		./scripts/"$script" "$GRAPHS_LABEL_TYPE" "$GRAPHS_DIRECTORY/$graph" 
+		./scripts/"$script" "$GRAPHS_LABEL_TYPE" "$GRAPHS_DIRECTORY/$graph" "$METAHEURISTIC"
 		echo "$script finished"
 	done
 	
