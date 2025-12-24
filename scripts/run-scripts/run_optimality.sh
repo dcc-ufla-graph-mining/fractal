@@ -2,7 +2,13 @@
 
 set -e
 
-# Usage: ./run_optimality.sh [graph_label_type] [graph_directory]
+# Usage: ./run_optimality.sh [graph_label_type] [graph_directory] [metaheuristic]
+
+# Check for required arguments
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 [graph_label_type] [graph_directory] [metaheuristic]"
+    exit 1
+fi
 
 # Configuration
 MEMORY=50
@@ -13,7 +19,7 @@ SEED=-1
 TIME_LIMIT_MS=(1000 2000 3000)
 OBJECTIVE_FUNCTIONS=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph" "labelentropy")
 GRAPH_LABEL="$1"
-METAHEURISTIC = "$3"
+METAHEURISTIC="$3"
 
 REPEATS=5 # Number of times to repeat the experiment for each combination of variables 
 
@@ -37,6 +43,11 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
         for timeLimit in "${TIME_LIMIT_MS[@]}"; do
             for objFunc in "${OBJECTIVE_FUNCTIONS[@]}"; do
                 for run in $(seq 1 $REPEATS); do
+                    # Skip labelentropy for unlabeled graphs
+                    if [ "$GRAPH_LABELTYPE" = "unlabeled" ] && [ "$objFunc" = "labelentropy" ]; then
+                        echo "Skipping labelentropy for unlabeled graph"
+                        continue
+                    fi
 
                     # Build the arguments and log filename
                     ARGS="$GRAPH_DIR $vertices $solutions $SEED $timeLimit $objFunc $METAHEURISTIC $GRAPH_LABEL"

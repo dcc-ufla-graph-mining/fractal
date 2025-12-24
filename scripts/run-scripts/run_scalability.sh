@@ -39,6 +39,11 @@ for ((core=$CORES_LOWER; core<=$CORES_UPPER; core++)); do
             for timeLimit in "${TIME_LIMIT_MS[@]}"; do
                 for objFunc in "${OBJECTIVE_FUNCTIONS[@]}"; do
                     for run in $(seq 1 $REPEATS); do
+                        # Skip labelentropy for unlabeled graphs
+                        if [ "$GRAPH_LABELTYPE" = "unlabeled" ] && [ "$objFunc" = "labelentropy" ]; then
+                          echo "Skipping labelentropy for unlabeled graph"
+                          continue
+                        fi
 
                         # Build the arguments and log filename
                         ARGS="$GRAPH_DIR $vertices $solutions $SEED $timeLimit $objFunc $METAHEURISTIC $GRAPH_LABEL"
