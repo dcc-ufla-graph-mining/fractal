@@ -36,7 +36,7 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
             for objFunc in "${OBJECTIVE_FUNCTIONS[@]}"; do
                 for run in $(seq 1 $REPEATS); do
                     # Skip labelentropy for unlabeled graphs
-                    if [ "$GRAPH_LABELTYPE" = "unlabeled" ] && [ "$objFunc" = "labelentropy" ]; then
+                    if [ "$GRAPH_LABEL" = "unlabeled" ] && [ "$objFunc" = "labelentropy" ]; then
                       echo "Skipping labelentropy for unlabeled graph"
                       continue
                     fi
@@ -45,7 +45,7 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
                     ARGS="$GRAPH_DIR $vertices $solutions $SEED $timeLimit $objFunc $METAHEURISTIC $GRAPH_LABEL"
         	          PREFIX="$GRAPH_NAME-$METAHEURISTIC-$CORES-${vertices}-${solutions}-${timeLimit}-${objFunc}-$GRAPH_LABEL-${run}"
 
-                    LOG_FILE="$LOG_DIR/$GRAPH_NAME-$METAHEURISTIC-$CORES-${vertices}-${solutions}-${timeLimit}-${objFunc}-$GRAPH_LABEL-${run}.txt"
+                    LOG_FILE="$LOG_DIR/$GRAPH_NAME-$METAHEURISTIC-$CORES-${vertices}-${solutions}-${timeLimit}-${objFunc}-${run}.txt"
 
                     # Build the full command
                     EXEC_COMMAND="./gradlew jar && master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} args=\"$ARGS\" ./bin/fractal-custom-app.sh"

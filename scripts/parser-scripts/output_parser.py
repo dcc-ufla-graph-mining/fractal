@@ -12,55 +12,90 @@ from datetime import datetime
 
 def extract_repetition_number(filename):
     """Extracts experiment repetition number from filename."""
-    match = re.search(r'_(\d+)\.(?:txt|log)(?:\.gz)?$', filename)
+    match = re.search(r'-(\d+)(?:\.(?:txt|log)(?:\.gz)?)?$', os.path.basename(filename))
     return int(match.group(1)) if match else 0
 
+def extract_parameters_from_filename(filename):
+    """Extracts experiment parameters from the new filename format."""
+    basename = os.path.basename(filename)
+    # Remove file extension if present
+    basename = re.sub(r'\.(?:txt|log)(?:\.gz)?$', '', basename)
+
+    parts = basename.split('-')
+
+    if len(parts) >= 8:
+        # Filename format: GRAPH_NAME-METAHEURISTIC-CORES-vertices-solutions-timeLimit-objFunc-run
+        return {
+            'graph_name': parts[0],
+            'metaheuristic': parts[1],
+            'num_threads': int(parts[2]),
+            'initial_vertices': int(parts[3]),
+            'num_initial_solutions': parts[4],
+            'timeout_ms': int(parts[5]),
+            'objective_function': parts[6],
+            'repetition': int(parts[7]) if len(parts) > 7 else 0
+        }
+    else:
+        # Fallback to old format or extraction from file content
+        return None
+
 def extract_experiment_parameters(logfile):
-    """Extracts experiment parameters from log file headers."""
-    params = {
-        'graph_name': None,
-        'initial_vertices': None,
-        'num_initial_solutions': None,
-        'timeout_ms': None,
-        'objective_function': None,
-        'num_threads': None,
-        'repetition': extract_repetition_number(logfile)
-    }
+    """Extracts experiment parameters from log file headers and filename."""
+    # First try to extract from filename (new format)
+    filename_params = extract_parameters_from_filename(logfile)
+
+    # Initialize params with filename values or defaults
+    if filename_params:
+        params = filename_params
+    else:
+        params = {
+            'graph_name': None,
+            'metaheuristic': None,
+            'initial_vertices': None,
+            'num_initial_solutions': None,
+            'timeout_ms': None,
+            'objective_function': None,
+            'num_threads': None,
+            'repetition': extract_repetition_number(logfile)
+        }
 
     # Handle both regular and gzipped files
     open_func = gzip.open if logfile.endswith('.gz') else open
     mode = 'rt'
 
-    with open_func(logfile, mode) as f:
-        for line in f:
-            # Extract command line arguments
-            if "args is set to '" in line:
-                args_match = re.search(r"args is set to '([^']+)'", line)
-                if args_match:
-                    args = args_match.group(1).split()
-                    if len(args) >= 6:
-                        params['graph_name'] = os.path.basename(args[0].rstrip('/'))
-                        params['initial_vertices'] = int(args[1])
-                        params['num_initial_solutions'] = args[2]
-                        params['timeout_ms'] = int(args[4])
-                        params['objective_function'] = args[5]
+    try:
+        with open_func(logfile, mode) as f:
+            for line in f:
+                # Extract command line arguments (fallback if filename extraction failed)
+                if not filename_params and "args is set to '" in line:
+                    args_match = re.search(r"args is set to '([^']+)'", line)
+                    if args_match:
+                        args = args_match.group(1).split()
+                        if len(args) >= 6:
+                            params['graph_name'] = os.path.basename(args[0].rstrip('/'))
+                            params['initial_vertices'] = int(args[1])
+                            params['num_initial_solutions'] = args[2]
+                            params['timeout_ms'] = int(args[4])
+                            params['objective_function'] = args[5]
 
-            # Extract thread count
-            if "--executor-cores" in line:
-                threads_match = re.search(r"--executor-cores\s+(\d+)", line)
-                if threads_match:
-                    params['num_threads'] = int(threads_match.group(1))
+                # Extract thread count (fallback)
+                if not filename_params and "--executor-cores" in line:
+                    threads_match = re.search(r"--executor-cores\s+(\d+)", line)
+                    if threads_match:
+                        params['num_threads'] = int(threads_match.group(1))
+
+                # Try to detect metaheuristic from log content if not from filename
+                if not params.get('metaheuristic'):
+                    meta_match = re.search(r'(VariableNeighborhoodSearch|IteratedLocalSearch|TabuSearch)', line)
+                    if meta_match:
+                        params['metaheuristic'] = meta_match.group(1)
+    except Exception as e:
+        print(f"Warning: Could not read {logfile} for parameter extraction: {e}")
 
     return params
 
 def parse_timestamp(line, current_date=None):
-    """Parses timestamp from log line (format: DD/MM/YY HH:MM:SS) with date handling.
-    Args:
-        line: Log line containing timestamp
-        current_date: datetime.date object representing the current date context
-    Returns:
-        datetime.datetime with proper date context
-    """
+    """Parses timestamp from log line (format: DD/MM/YY HH:MM:SS) with date handling."""
     match = re.match(r"(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})", line)
     if match:
         try:
@@ -89,7 +124,7 @@ def process_log_file(logfile):
     # Extract metrics from the last few lines
     last_lines = deque(lines, maxlen=100)
     best_subgraph_line = None
-   
+
     # Search all last lines for "BestSubgraph"
     for line in reversed(last_lines):
         line = line.strip()
@@ -114,11 +149,21 @@ def process_log_file(logfile):
             }
 
     # Calculate time to the best solution and the number of effective runs
-    first_vns_time = None
+    first_meta_time = None
     best_cost_time = None
     effective_runs = -1
     best_cost_found = False
     current_date = None  # Track the current date context
+
+    # Define metaheuristic patterns
+    meta_patterns = [
+        'VariableNeighborhoodSearch',
+        'IteratedLocalSearch',
+        'TabuSearch'
+    ]
+
+    # Create regex pattern to match any metaheuristic
+    meta_regex = re.compile(r'(' + '|'.join(meta_patterns) + r')\s+(\d+)')
 
     for line in lines:
         # Update current_date context if timestamp is found
@@ -127,18 +172,18 @@ def process_log_file(logfile):
             if not current_date or timestamp.date() != current_date:
                 current_date = timestamp.date()
 
-        if 'VNSSubgraphOptimization' in line:
+        # Check for any metaheuristic run
+        meta_match = meta_regex.search(line)
+        if meta_match:
             # Extract and update the highest run number
-            run_match = re.search(r'VNSSubgraphOptimization\s+(\d+)', line)
-            if run_match:
-                current_run = int(run_match.group(1))
-                if current_run > effective_runs:
-                    effective_runs = current_run
+            current_run = int(meta_match.group(2))
+            if current_run > effective_runs:
+                effective_runs = current_run
 
             if not best_cost_found:
-                # Record first VNS timestamp with date context
-                if not first_vns_time:
-                    first_vns_time = parse_timestamp(line, current_date)
+                # Record first metaheuristic timestamp with date context
+                if not first_meta_time:
+                    first_meta_time = parse_timestamp(line, current_date)
 
                 # Find first occurrence of best cost
                 if best_subgraph and 'cost' in best_subgraph:
@@ -146,11 +191,12 @@ def process_log_file(logfile):
                     if cost_match and abs(float(cost_match.group(1)) - best_subgraph['cost']) < 1e-9:
                         best_cost_time = parse_timestamp(line, current_date)
                         best_cost_found = True
-    effective_runs+=1
+
+    effective_runs += 1
 
     # Calculate time difference if both timestamps were found
-    if first_vns_time and best_cost_time:
-        delta = best_cost_time - first_vns_time
+    if first_meta_time and best_cost_time:
+        delta = best_cost_time - first_meta_time
         time_to_best_ms = int(delta.total_seconds() * 1000)
 
     return {
@@ -167,23 +213,41 @@ def process_log_file(logfile):
 def process_directory(directory_path):
     """Processes all log files in a directory and generates CSV output."""
     all_results = []
+
+    # Look for files with new naming pattern (no extension or with extensions)
+    patterns = [
+        os.path.join(directory_path, '**', '*-*-*-*-*-*-*-*'),  # New pattern: 8 parts separated by hyphens
+        os.path.join(directory_path, '**', '*-*-*-*-*-*-*-*.txt'),  # With .txt extension
+        os.path.join(directory_path, '**', '*-*-*-*-*-*-*-*.txt.gz'),  # Compressed
+        os.path.join(directory_path, '**', '*-*-*-*-*-*-*-*.log'),  # With .log extension
+        os.path.join(directory_path, '**', '*-*-*-*-*-*-*-*.log.gz'),  # Compressed log
+    ]
+
+    all_files = set()
+    for pattern in patterns:
+        all_files.update(glob.glob(pattern, recursive=True))
+
+    # Also include old pattern files for backward compatibility
     for filepath in glob.glob(os.path.join(directory_path, '**', '*.txt*'), recursive=True):
-        if filepath.endswith(('.txt', '.txt.gz')):
-            try:
-                all_results.append(process_log_file(filepath))
-            except Exception as e:
-                print(f"Error processing {filepath}: {str(e)}")
-                continue
+        all_files.add(filepath)
+
+    for filepath in sorted(all_files):
+        try:
+            all_results.append(process_log_file(filepath))
+        except Exception as e:
+            print(f"Error processing {filepath}: {str(e)}")
+            continue
 
     if not all_results:
         print("No valid log files found in directory")
         return
 
-    # Define CSV output structure
+    # Define CSV output structure - updated to include metaheuristic
     today_date = datetime.now().strftime("%d-%m")
     output_file = f"exp_results_{today_date}.csv"
     fields = [
         ('graph_name', 'Graph'),
+        ('metaheuristic', 'Metaheuristic'),
         ('initial_vertices', 'Initial Vertices'),
         ('num_initial_solutions', 'Initial Solutions'),
         ('timeout_ms', 'Timeout (ms)'),
@@ -210,6 +274,7 @@ def process_directory(directory_path):
             f.write(','.join(row) + '\n')
 
     print(f"Results {'appended to' if file_exists else 'saved to'}: {os.path.abspath(output_file)}")
+    print(f"Processed {len(all_results)} files")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
