@@ -31,31 +31,13 @@ public class SubgraphOptimization implements Logging {
         final int id = nextId.getAndIncrement();
         improvement = false;
         Future<?> future;
-        SubgraphOptimizationMetaheuristic metaheuristic;
-
-        if(metaheuristicType == VNS) {
-            metaheuristic = new VariableNeighborhoodSearch();
-        } else {
-            if(metaheuristicType == ILS) {
-                metaheuristic = new IteratedLocalSearch();
-            } else {
-                if(metaheuristicType == TS) {
-                    metaheuristic = new TabuSearch();
-                } else {
-                    throw new RuntimeException("Invalid metaheuristic");
-                }
-            }
-        }
-
-        if(tempSubgraph == null) {
-            tempSubgraph = new VertexInducedOptimizationSubgraph();
-        }
+        SubgraphOptimizationMetaheuristic metaheuristic = getSubgraphOptimizationMetaheuristic(metaheuristicType);
 
         logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
         // Run optimization
         future = executor.submit(() -> {
-            metaheuristic.optimization(subgraph, tempSubgraph, neighborhoodStructures, id);
+            metaheuristic.optimization(subgraph, neighborhoodStructures, id);
         });
 
         try {
@@ -75,5 +57,30 @@ public class SubgraphOptimization implements Logging {
         }
 
         return improvement;
+    }
+
+    /**
+     * Creates and returns the object of the metaheuristic provided as a parameter
+     *
+     * @param metaheuristicType Name of the metaheuristic to be used to improve the initial solutions
+     * @return An object of the given metaheuristic
+     */
+    private static SubgraphOptimizationMetaheuristic getSubgraphOptimizationMetaheuristic(MetaheuristicType metaheuristicType) {
+        SubgraphOptimizationMetaheuristic metaheuristic;
+
+        if(metaheuristicType == VNS) {
+            metaheuristic = new VariableNeighborhoodSearch();
+        } else {
+            if(metaheuristicType == ILS) {
+                metaheuristic = new IteratedLocalSearch();
+            } else {
+                if(metaheuristicType == TS) {
+                    metaheuristic = new TabuSearch(10);
+                } else {
+                    throw new RuntimeException("Invalid metaheuristic");
+                }
+            }
+        }
+        return metaheuristic;
     }
 }

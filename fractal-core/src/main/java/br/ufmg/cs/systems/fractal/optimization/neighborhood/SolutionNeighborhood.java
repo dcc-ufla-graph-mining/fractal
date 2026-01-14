@@ -1,6 +1,7 @@
 package br.ufmg.cs.systems.fractal.optimization.neighborhood;
 
 import br.ufmg.cs.systems.fractal.optimization.VertexInducedOptimizationSubgraph;
+import br.ufmg.cs.systems.fractal.optimization.metaheuristic.TabuSearch.TabuList;
 import br.ufmg.cs.systems.fractal.util.Logging;
 
 public interface SolutionNeighborhood extends Logging {
@@ -13,4 +14,6 @@ public interface SolutionNeighborhood extends Logging {
    boolean firstImproving(VertexInducedOptimizationSubgraph subgraph);
 
    void randomShake(VertexInducedOptimizationSubgraph subgraph);
+
+   boolean tabuImproving(VertexInducedOptimizationSubgraph subgraph, TabuList tabuList, double bestCost);
 }

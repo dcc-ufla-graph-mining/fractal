@@ -2,11 +2,13 @@ package br.ufmg.cs.systems.fractal.optimization.neighborhood;
 
 import br.ufmg.cs.systems.fractal.optimization.OptimizationUtils;
 import br.ufmg.cs.systems.fractal.optimization.VertexInducedOptimizationSubgraph;
+import br.ufmg.cs.systems.fractal.optimization.metaheuristic.TabuSearch.TabuList;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.set.IntSet;
+import com.koloboke.collect.set.hash.HashIntSet;
 import com.koloboke.collect.set.hash.HashIntSets;
 
 public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
@@ -15,54 +17,70 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
     private final IntSet subgraphVertices = HashIntSets.newMutableSet();            // List of vertices in the subgraph
     private final IntArrayListView vertexNeighborhood = new IntArrayListView();     // List to see the neighbors of a given vertex
 
+    /**
+     * Performs a first-improving local search by exploring vertex exchanges (remove one, add one).
+     * Systematically tests removing each non-articulation vertex and adding neighbors until finding
+     * any exchange that improves the current solution cost.
+     *
+     * @param subgraph Current solution to be improved
+     * @return true if an improving exchange was found and applied, false otherwise
+     */
     @Override
     public boolean firstImproving(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
 
         // Get the subgraph vertices
         if(!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
-            return false;
+            return false; // No valid subgraph to improve
         }
         // Get the non-articulation vertices
         if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
-            return false;
+            return false; // No removable vertices
         }
 
         double initialCost = subgraph.getCost();
 
-        // Get a vertex to be removed
+        // Iterate through all non-articulation vertices as removal candidates
         IntCursor cur = nonArticulationVertices.cursor();
         while(cur.moveNext()) {
+            // Remove a non-articulation vertex
             int vertexToRemove = cur.elem();
             subgraph.removeAndSetCost(vertexToRemove, initialCost);
 
-            // Get a vertex from the subgraph
+            // Explore neighborhoods of vertices still in the subgraph
             IntCursor ncur = subgraphVertices.cursor();
             while(ncur.moveNext()) {
                 int vertex = ncur.elem();
 
-                // Get a neighbor from the vertex's neighborhood to add it
-                if (vertex != vertexToRemove) {
-                    subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
-                    int neighborhoodSize = vertexNeighborhood.size();
-                    int neighborsOffset = OptimizationUtils.getRandomInt(neighborhoodSize);    // Generate a random offset to the neighbor index
+                // Skip the removed vertex
+                if(vertex == vertexToRemove) {
+                    continue;
+                }
 
-                    for (int i = 0; i < neighborhoodSize; i++) {
-                        int neighborIndex = (neighborsOffset + i) % neighborhoodSize;
-                        int neighborToAdd = vertexNeighborhood.get(neighborIndex);
+                // Get external neighbors of this subgraph vertex
+                subgraph.neighborhoodVertices(vertex, vertexNeighborhood);
+                int neighborhoodSize = vertexNeighborhood.size();
 
-                        // Check if the neighbor it is not in the subgraph and add it
-                        if (!adjLists.containsKey(neighborToAdd)) {
+                // Random offset ensures we don't always start at the same neighbor (avoids bias)
+                int neighborsOffset = OptimizationUtils.getRandomInt(neighborhoodSize);
 
-                            subgraph.addAndRecalculateCost(neighborToAdd);
+                // Test each neighbor as a potential addition
+                for (int i = 0; i < neighborhoodSize; i++) {
+                    int neighborIndex = (neighborsOffset + i) % neighborhoodSize;
+                    int neighborToAdd = vertexNeighborhood.get(neighborIndex);
 
-                            // Check if the swap increased the cost
-                            if (subgraph.getCost() > initialCost) {
-                                subgraph.setUpdateString(String.format("-%d+%d", vertexToRemove, neighborToAdd));
-                                return true;
-                            } else {
-                                subgraph.removeAndSetCost(neighborToAdd, initialCost);  // Rollback the vertex addition
-                            }
+                    // Skip if neighbor is already in subgraph or is the removed vertex
+                    if (neighborToAdd != vertexToRemove && !adjLists.containsKey(neighborToAdd)) {
+                        subgraph.addAndRecalculateCost(neighborToAdd);
+
+                        // Accept immediately if cost improves
+                        if (subgraph.getCost() > initialCost) {
+                            // Record the exchange for debugging/tracking
+                            subgraph.setUpdateString(String.format("-%d+%d", vertexToRemove, neighborToAdd));
+
+                            return true;
+                        } else {
+                            subgraph.removeAndSetCost(neighborToAdd, initialCost);  // Rollback the vertex addition
                         }
                     }
                 }
@@ -153,8 +171,134 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
             int randomNeighborToAdd = cur.elem();
 
             subgraph.swapVertices(randomVertexToRemove, randomNeighborToAdd);   // Swap vertices
-            subgraph.setUpdateString(String.format("/-%d+%d", randomVertexToRemove, randomNeighborToAdd));
+            subgraph.setUpdateString(String.format("/-%d+%d", randomVertexToRemove, randomNeighborToAdd)); // Prints the swaped vertices for tracking purposes
         }
+    }
+
+    /**
+     * Explores the neighborhood by testing all possible single-vertex exchanges (remove one, add one) and making the best change found.
+     * Evaluates removing each non-articulation vertex from the subgraph and adding each valid neighbor.
+     * Selection criteria:
+     *  * 1. Non-tabu moves: Accepts the move with the highest cost improvement in the current neighborhood
+     *  * 2. Tabu moves: Only accepted if they improve the overall best cost found so far
+     *  * 3. Worsening moves: Allowed for non-tabu vertices when no improving moves exist
+     *
+     * @param subgraph Current solution to be modified
+     * @param tabuList Vertices that cannot be modified unless they improve overall best cost
+     * @param bestCost The best objective value found so far in the search
+     * @return Array [removedVertex, addedVertex] if an exchange was performed, [-1, -1] otherwise
+     */
+    @Override
+    public boolean tabuImproving(VertexInducedOptimizationSubgraph subgraph, TabuList tabuList, double bestCost) {
+        int bestVertexToAdd = -1;
+        int bestVertexToRemove = -1;
+        int currentVertexToAdd;
+        int currentVertexToRemove;
+        double initialCost = subgraph.getCost();
+        double bestNeighborhoodCost = 0;
+        double currentCost;
+        boolean swapAccepted;
+        boolean improvement = false;
+
+        adjLists = subgraph.getAdjLists();
+
+        // Get the subgraph vertices
+        if(!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
+            return false; // No valid subgraph to improve
+        }
+        // Get the non-articulation vertices
+        if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+            return false; // No removable vertices
+        }
+
+        // Iterate through all non-articulation vertices as removal candidates
+        IntCursor cur = nonArticulationVertices.cursor();
+        while(cur.moveNext() && !improvement) {
+            // Get a non-articulation vertex
+            currentVertexToRemove = cur.elem();
+            subgraph.removeAndSetCost(currentVertexToRemove, 0);
+
+            // Explore neighborhoods of vertices still in the subgraph
+            IntCursor ncur = subgraphVertices.cursor();
+            while(ncur.moveNext() && !improvement) {
+                // Get a vertex from the subgraph
+                int subgraphVertex = ncur.elem();
+
+                // Skip the removed vertex
+                if(subgraphVertex == currentVertexToRemove) {
+                    continue;
+                }
+
+                // Get external neighbors of this subgraph vertex
+                subgraph.neighborhoodVertices(subgraphVertex, vertexNeighborhood);
+                int neighborhoodSize = vertexNeighborhood.size();
+
+                // Random offset ensures we don't always start at the same neighbor (avoids bias)
+                int neighborsOffset = OptimizationUtils.getRandomInt(neighborhoodSize);
+
+                // Test each neighbor as a potential addition
+                for (int i = 0; i < neighborhoodSize; i++) {
+                    int neighborIndex = (neighborsOffset + i) % neighborhoodSize;
+                    currentVertexToAdd = vertexNeighborhood.get(neighborIndex);
+                    swapAccepted = false;
+
+                    // Skip if neighbor is already in subgraph or is the removed vertex
+                    if (currentVertexToAdd != currentVertexToRemove && !adjLists.containsKey(currentVertexToAdd)) {
+                        subgraph.addAndRecalculateCost(currentVertexToAdd);
+                        currentCost = subgraph.getCost();
+
+                        // Aspiration criteria: accepts if the move is tabu but increases the overall optimum
+                        if (currentCost > bestCost) {
+                            improvement = true;
+                            swapAccepted = true;
+                            i = neighborhoodSize;
+                        } else {
+                            // Checks if one of the swaped vertices are tabu
+                            if(tabuList.contains(currentVertexToRemove) || tabuList.contains(currentVertexToAdd)) {
+                                // Accepts the swap if it increases the best cost found in the neighborhood
+                                if (currentCost > bestNeighborhoodCost) {
+                                    swapAccepted = true;
+                                }
+                            }
+                        }
+
+                        // Update the swaped vertices
+                        if (swapAccepted) {
+                            bestVertexToAdd = currentVertexToAdd;
+                            bestVertexToRemove = currentVertexToRemove;
+                            bestNeighborhoodCost = currentCost;
+                        }
+
+                        if(!improvement) {
+                            // Rollback the vertex insertion
+                            subgraph.removeAndSetCost(currentVertexToAdd, 0);
+                        }
+                    }
+                }
+            }
+            if(!improvement) {
+                // Rollback the vertex removal
+                subgraph.addAndSetCost(currentVertexToRemove, initialCost);
+            }
+        }
+
+        if(bestVertexToRemove >= 0 &&  bestVertexToAdd >= 0) {
+            if(!improvement) {
+                // Swaps best vertices
+                subgraph.removeAndSetCost(bestVertexToRemove, bestCost);
+                subgraph.addAndSetCost(bestVertexToAdd, bestCost);
+            }
+
+            // Add the vertices to the tabu list
+            tabuList.add(bestVertexToRemove);
+            tabuList.add(bestVertexToAdd);
+
+            // Prints the swaped vertices for tracking/log purposes
+            subgraph.setUpdateString(String.format("-%d+%d", bestVertexToRemove, bestVertexToAdd));
+
+        }
+
+        return improvement;
     }
 
     @Override
