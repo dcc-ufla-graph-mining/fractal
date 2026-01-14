@@ -7,9 +7,9 @@ import br.ufmg.cs.systems.fractal.util.Logging;
 import java.util.concurrent.*;
 
 public class VariableNeighborhoodSearch implements SubgraphOptimizationMetaheuristic, Logging {
-    boolean improvement;
-    SolutionNeighborhood neighborhood;
-    int id;
+    private boolean improvement;
+    private SolutionNeighborhood neighborhood;
+    private int id;
 
     /**
      * Variable Neighborhood Search algorithm for subgraph optimization
@@ -18,15 +18,18 @@ public class VariableNeighborhoodSearch implements SubgraphOptimizationMetaheuri
      * @param neighborhoodStructures neighborhood functions to be explored to optimize the subgraph
      * @param id identifies the initial solution (tracking purposes)
      */
-    public void optimization(VertexInducedOptimizationSubgraph subgraph, VertexInducedOptimizationSubgraph vnsSubgraph, SolutionNeighborhood[] neighborhoodStructures, int id) {
+    public void optimization(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood[] neighborhoodStructures, int id) {
+        VertexInducedOptimizationSubgraph vnsSubgraph = new VertexInducedOptimizationSubgraph();
         int idx;
-        int numNeighborhood = neighborhoodStructures.length;
+        int numNeighborhoods = neighborhoodStructures.length;
         this.id = id;
+
+        subgraph.copyTo(vnsSubgraph);
 
          // VNS Loop
         while (!Thread.currentThread().isInterrupted()) {
             idx = 0;
-            while (idx < numNeighborhood && !Thread.currentThread().isInterrupted()) {
+            while (idx < numNeighborhoods && !Thread.currentThread().isInterrupted()) {
                 neighborhood = neighborhoodStructures[idx];
 
                 diversification(subgraph, vnsSubgraph);
@@ -49,7 +52,7 @@ public class VariableNeighborhoodSearch implements SubgraphOptimizationMetaheuri
      *  @return true if any improvement occurred, or false otherwise
      */
     public boolean intensification(VertexInducedOptimizationSubgraph bestSubgraph, VertexInducedOptimizationSubgraph vnsSubgraph) {
-        if (localSearch(vnsSubgraph, neighborhood, id)) {
+        if (localSearch(vnsSubgraph, neighborhood)) {
             if (vnsSubgraph.getCost() > bestSubgraph.getCost()) {
                 vnsSubgraph.copyTo(bestSubgraph);
                 improvement = true;
@@ -76,11 +79,10 @@ public class VariableNeighborhoodSearch implements SubgraphOptimizationMetaheuri
      * Repeats firstImproving while still improving, given some neighborhood
      *
      * @param subgraph
-     * @param sneighborhood
-     * @param id identifies the initial solution (tracking purposes)
+     * @param sneighborhood solution neighborhood to be explored
      * @return true if any improvement occurred, or false otherwise
      */
-    private boolean localSearch(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood sneighborhood, int id) {
+    private boolean localSearch(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood sneighborhood) {
         boolean improvement, hasImproved = false;
         do {
             improvement = sneighborhood.firstImproving(subgraph);
@@ -92,7 +94,6 @@ public class VariableNeighborhoodSearch implements SubgraphOptimizationMetaheuri
 
         return hasImproved;
     }
-
 
 
     public String toString() {

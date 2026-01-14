@@ -11,13 +11,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class IteratedLocalSearch implements SubgraphOptimizationMetaheuristic, Logging {
 
     private static final AtomicInteger nextId = new AtomicInteger();
-    private long timeLimitMs;                // Time limit to execute the run
     private boolean improvement;
     private SolutionNeighborhood[] neighborhoodStructures;
-    private int numNeighborhoods;
     private SolutionNeighborhood neighborhood;
     private int perturbationDegree;
     private int id;
+
 
     /**
      * Iterated Local Search algorithm for subgraph optimization
@@ -26,9 +25,9 @@ public class IteratedLocalSearch implements SubgraphOptimizationMetaheuristic, L
      * @param neighborhoodStructures neighborhood functions to be explored to optimize the subgraph
      * @param id identifies the initial solution (tracking purposes)
      */
-    public void optimization(VertexInducedOptimizationSubgraph subgraph, VertexInducedOptimizationSubgraph ilsSubgraph, SolutionNeighborhood[] neighborhoodStructures, int id) {
+    public void optimization(VertexInducedOptimizationSubgraph subgraph, SolutionNeighborhood[] neighborhoodStructures, int id) {
+        VertexInducedOptimizationSubgraph ilsSubgraph = new VertexInducedOptimizationSubgraph();
         this.neighborhoodStructures = neighborhoodStructures;
-        numNeighborhoods = neighborhoodStructures.length;
         this.id = id;
         perturbationDegree = 0;
 
@@ -50,40 +49,20 @@ public class IteratedLocalSearch implements SubgraphOptimizationMetaheuristic, L
     }
 
     /**
-     * Repeats firstImproving while still improving, given some neighborhood
+     * Intensification phase to improve the subgraph
      *
-     * @param ilsSubgraph
-     * @param neighborhood neighborhood function to be explored
-     * @param id identifies the initial solution (tracking purposes)
+     * @param bestSubgraph best subgraph found
+     * @param ilsSubgraph subgraph to be improved
      * @return true if any improvement occurred, or false otherwise
-     */
-    private boolean localSearch(VertexInducedOptimizationSubgraph ilsSubgraph, SolutionNeighborhood neighborhood, int id) {
-        boolean improvement, hasImproved = false;
-        do {
-            improvement = neighborhood.firstImproving(ilsSubgraph);
-            if (improvement) {
-                logApp(() -> String.format("%d %s", id, ilsSubgraph.toShortString()));
-                hasImproved = true;  // Track if at least one improvement happened
-            }
-        } while (improvement && !Thread.currentThread().isInterrupted());
-
-        return hasImproved;
-    }
-
-    /**
-     *  Intensification phase to improve the subgraph
-     *
-     *  @param bestSubgraph best subgraph found
-     *  @param ilsSubgraph subgraph to be improved
-     *  @return true if any improvement occurred, or false otherwise
      */
     public boolean intensification(VertexInducedOptimizationSubgraph bestSubgraph, VertexInducedOptimizationSubgraph ilsSubgraph) {
         int idx = 0;
+        int numNeighborhoods = neighborhoodStructures.length;
 
         // Run the Local Search for each neighborhood and keep the best solution on subgraph
         while (idx < numNeighborhoods && !Thread.currentThread().isInterrupted()) {
             neighborhood = neighborhoodStructures[idx];
-            if (localSearch(ilsSubgraph, neighborhood, id)) {
+            if (localSearch(ilsSubgraph, neighborhood)) {
                 ilsSubgraph.copyTo(bestSubgraph);   // Copies the improved subgraph to the best solution
                 improvement = true;
             }
@@ -94,13 +73,14 @@ public class IteratedLocalSearch implements SubgraphOptimizationMetaheuristic, L
     }
 
     /**
-     *  Perturbs the subgraph to scape from local optima
+     * Perturbs the ilsSubgraph to scape from local optima
      *
      * @param bestSubgraph best subgraph found
      * @param ilsSubgraph subgraph to be diversified
      */
     public void diversification(VertexInducedOptimizationSubgraph bestSubgraph, VertexInducedOptimizationSubgraph ilsSubgraph) {
-       int idx = 0;
+        int idx = 0;
+        int numNeighborhoods = neighborhoodStructures.length;
 
         // Perturbs the solution according to perturbation degree
         for(int i = 0; i <= perturbationDegree; i++) {
@@ -114,6 +94,26 @@ public class IteratedLocalSearch implements SubgraphOptimizationMetaheuristic, L
         if (ilsSubgraph.getCost() > bestSubgraph.getCost()) {
             ilsSubgraph.copyTo(bestSubgraph);   // Copies the improved subgraph to the best solution
         }
+    }
+
+    /**
+     * Repeats firstImproving while still improving, given some neighborhood
+     *
+     * @param ilsSubgraph subgraph to be improved
+     * @param sneighborhood neighborhood function to be explored
+     * @return true if any improvement occurred, or false otherwise
+     */
+    private boolean localSearch(VertexInducedOptimizationSubgraph ilsSubgraph, SolutionNeighborhood sneighborhood) {
+        boolean improvement, hasImproved = false;
+        do {
+            improvement = sneighborhood.firstImproving(ilsSubgraph);
+            if (improvement) {
+                logApp(() -> String.format("%d %s", id, ilsSubgraph.toShortString()));
+                hasImproved = true;  // Track if at least one improvement happened
+            }
+        } while (improvement && !Thread.currentThread().isInterrupted());
+
+        return hasImproved;
     }
 
     @Override

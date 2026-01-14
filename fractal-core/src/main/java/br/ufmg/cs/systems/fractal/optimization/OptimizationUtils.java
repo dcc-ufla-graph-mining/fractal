@@ -10,9 +10,16 @@ import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 import com.koloboke.collect.set.IntSet;
 
+import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
-public class OptimizationUtils {
+public final class OptimizationUtils {
+    private static final ThreadLocalRandom RANDOM = ThreadLocalRandom.current();
+
+    private OptimizationUtils() {
+        throw new AssertionError("Utility class should not be instantiated");
+    }
 
     // DFS used to run the Tarjan method
     private static int dfsTarjan(int u, int p, IntIntMap low, IntIntMap disc, IntObjMap<IntIntMap> adjLists, IntSet nonArticulationVertices, int[] timeTarjan) {
@@ -194,9 +201,7 @@ public class OptimizationUtils {
      * @return random integer in the range [0, bound)
      */
     public static int getRandomInt(int bound) {
-        Random r = new Random();
-        int randomInt = r.nextInt(bound);
-        return randomInt;
+        return RANDOM.nextInt(bound);
     }
 
 }
