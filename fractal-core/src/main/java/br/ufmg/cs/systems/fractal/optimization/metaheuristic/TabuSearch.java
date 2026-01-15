@@ -17,9 +17,11 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
     private SolutionNeighborhood neighborhood;
     private int id;
     private final TabuList tabuList;
+    private final int k;
 
-    public TabuSearch(int tabuListSize) {
+    public TabuSearch(int tabuListSize, int k) {
         this.tabuList = new TabuList(tabuListSize);
+        this.k = k;
     }
 
     /**
@@ -43,7 +45,15 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
         while (!Thread.currentThread().isInterrupted()) {
             while (neighborhoodIndex < neighborhoodSize && !Thread.currentThread().isInterrupted()) {
                 sNeighborhood = neighborhoodStructures[neighborhoodIndex];
-                tabuImprovingLocalSearch(subgraph, tabuSubgraph, sNeighborhood);
+                int noImproveIterations = 0;
+                while(noImproveIterations < k) {
+                    boolean improvement = tabuImprovingLocalSearch(subgraph, tabuSubgraph, sNeighborhood);
+                    if(improvement) {
+                        noImproveIterations = 1;
+                    } else {
+                        noImproveIterations++;
+                    }
+                }
 
                 neighborhoodIndex++;
             }
