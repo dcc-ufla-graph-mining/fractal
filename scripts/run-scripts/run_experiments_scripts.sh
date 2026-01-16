@@ -3,6 +3,7 @@
 # Navigate to the fractal directory
 cd ~/fractal || { echo "Error: fractal directory not found."; exit 1; }
 
+
 # Define graph to label mapping
 declare -A GRAPH_LABELS=(
     ["citeseer"]="vertexlabeled"
@@ -15,6 +16,7 @@ declare -A GRAPH_LABELS=(
 
 GRAPHS_DIRECTORY="$HOME/graphs-data/"
 METAHEURISTIC="ils"
+PREFIX="optimization-logs/ccpe2026/$METAHEURISTIC"
 SCRIPTS=("run_optimality.sh" "run_scalability.sh" "run_so_metrics.sh" "run_profiling.sh")
 
 # Loop through each graph
@@ -30,7 +32,7 @@ for graph in "${!GRAPH_LABELS[@]}"; do
 
     for script in "${SCRIPTS[@]}"; do
         echo "Running $script for $graph..."
-        ./scripts/run-scripts/"$script" "$label" "$GRAPHS_DIRECTORY/$graph" "$METAHEURISTIC"
+        ./scripts/run-scripts/"$script" "$METAHEURISTIC" "$label" "$GRAPHS_DIRECTORY/$graph" "$PREFIX"
         echo "$script finished"
     done
 

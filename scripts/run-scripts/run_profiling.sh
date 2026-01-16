@@ -12,15 +12,16 @@ NUM_INIT_SOLUTIONS=(100 1000)
 SEED=-1
 TIME_LIMIT_MS=(1000 2000 3000)
 OBJECTIVE_FUNCTIONS=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph" "labelentropy")
-GRAPH_LABEL="$1"
-METAHEURISTIC="$3"
+METAHEURISTIC="$1"
+GRAPH_LABEL="$2"
 
 REPEATS=5 # Number of times to repeat the experiment for each combination of variables 
 
 # Define graph and log dir
-GRAPH_DIR="$2"
+GRAPH_DIR="$3"
 GRAPH_NAME=$(basename "$GRAPH_DIR")	# Extract last directory name
-LOG_DIR="optimization-logs/ccpe2026/profiling/$METAHEURISTIC/${GRAPH_NAME}"
+PREFIX_LOG_DIR="$4"
+LOG_DIR="$PREFIX_LOG_DIR/profiling/${GRAPH_NAME}"
 
 # Validate graph directory exists
 if [ ! -d "$GRAPH_DIR" ]; then
@@ -56,7 +57,7 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
                     # Execute the command
                     eval "$EXEC_COMMAND"
 
-           	    # Gzip the log file
+           	        # Gzip the log file
                     gzip "$LOG_FILE" && echo "Compressed: $LOG_FILE.gz"
 
                 done

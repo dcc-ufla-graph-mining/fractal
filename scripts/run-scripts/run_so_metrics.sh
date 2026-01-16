@@ -1,6 +1,20 @@
 #!/bin/bash
 
-# Usage: ./run_so_metrics.sh [graph_label_type] [graph_directory]
+# Usage: ./run_so_metrics.sh [metaheuristic] [graph_label_type] [graph_directory] [prefix_log_dir]
+
+# 1. Check Arguments
+if [ $# -ne 4 ]; then
+    echo "Usage: $0 [metaheuristic] [graph_label_type] [graph_directory] [prefix_log_dir]"
+    exit 1
+fi
+
+# 2. Build ONCE at the start
+echo "Building project..."
+./gradlew jar
+if [ $? -ne 0 ]; then
+    echo "Error: Compilation failed. Exiting."
+    exit 1
+fi
 
 # Configuration
 MEMORY=50
@@ -10,23 +24,22 @@ NUM_INIT_SOLUTIONS=(100 1000)
 SEED=-1
 TIME_LIMIT_MS=(1000 2000 3000)
 OBJECTIVE_FUNCTIONS=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph" "labelentropy")
-GRAPH_LABEL="$1"
-METAHEURISTIC="$3"
 
-REPEATS=5 # Number of times to repeat the experiment for each combination of variables 
+# Input Arguments
+METAHEURISTIC="$1"
+GRAPH_LABEL="$2"
+GRAPH_DIR="$3"
+PREFIX_LOG_DIR="$4"
 
-# Define graph and log dir
-GRAPH_DIR="$2"
-GRAPH_NAME=$(basename "$GRAPH_DIR")	# Extract last directory name
-LOG_DIR="optimization-logs/ccpe2026/performance-metrics/$METAHEURISTIC/${GRAPH_NAME}"
+REPEATS=5
 
-# Validate graph directory exists
 if [ ! -d "$GRAPH_DIR" ]; then
     echo "Error: Graph directory '$GRAPH_DIR' does not exist"
     exit 1
 fi
 
-# Create log directory
+GRAPH_NAME=$(basename "$GRAPH_DIR")
+LOG_DIR="$PREFIX_LOG_DIR/performance-metrics/${GRAPH_NAME}"
 mkdir -p "$LOG_DIR"
 
 # Loop script start
@@ -35,69 +48,92 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
         for timeLimit in "${TIME_LIMIT_MS[@]}"; do
             for objFunc in "${OBJECTIVE_FUNCTIONS[@]}"; do
                 for run in $(seq 1 $REPEATS); do
-                    # Skip labelentropy for unlabeled graphs
+
                     if [ "$GRAPH_LABEL" = "unlabeled" ] && [ "$objFunc" = "labelentropy" ]; then
-                      echo "Skipping labelentropy for unlabeled graph"
                       continue
                     fi
 
-                    # Build the arguments and log filename
                     ARGS="$GRAPH_DIR $vertices $solutions $SEED $timeLimit $objFunc $METAHEURISTIC $GRAPH_LABEL"
-        	          PREFIX="$GRAPH_NAME-$METAHEURISTIC-$CORES-${vertices}-${solutions}-${timeLimit}-${objFunc}-$GRAPH_LABEL-${run}"
+                    PREFIX="$GRAPH_NAME-$METAHEURISTIC-$CORES-${vertices}-${solutions}-${timeLimit}-${objFunc}-${run}"
+                    LOG_FILE="$LOG_DIR/${PREFIX}.txt"
 
-                    LOG_FILE="$LOG_DIR/$GRAPH_NAME-$METAHEURISTIC-$CORES-${vertices}-${solutions}-${timeLimit}-${objFunc}-${run}.txt"
+                    echo "Starting Run: $PREFIX"
 
-                    # Build the full command
-                    EXEC_COMMAND="./gradlew jar && master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} args=\"$ARGS\" ./bin/fractal-custom-app.sh"
+                    # Build Command
+                    EXEC_COMMAND="master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} args=\"$ARGS\" ./bin/fractal-custom-app.sh"
 
-                    # Run the main Spark job
-                    eval "$EXEC_COMMAND" > /dev/null 2>&1  &
-                    main_pid=$!
+                    # Run Spark Job in Background
+                    eval "$EXEC_COMMAND" > "$LOG_FILE" 2>&1 &
+                    main_shell_pid=$!
 
-                    # Wait for Spark process to start
-                    echo "Waiting for Spark process to start..."
+                    # Wait for Spark Java process to appear
                     spark_pid=""
                     timeout=30
-                    while [ $timeout -gt 0 ] && [ -z "$spark_pid" ]; do
-                        spark_pid=$(pgrep -f 'java.*SparkSubmit' | head -n 1)
+                    while [ $timeout -gt 0 ]; do
+                        # Check if the main wrapper script already died (e.g., config error)
+                        if ! kill -0 "$main_shell_pid" 2>/dev/null; then
+                            echo "  !! Error: Main wrapper script died immediately."
+                            break
+                        fi
+
+                        # Look for SparkSubmit belonging to THIS USER
+                        spark_pid=$(pgrep -u "$USER" -f 'java.*SparkSubmit' | sort -n | tail -n 1)
+
+                        if [ -n "$spark_pid" ] && kill -0 "$spark_pid" 2>/dev/null; then
+                            break
+                        fi
                         sleep 1
                         ((timeout--))
                     done
 
-                    if [ -z "$spark_pid" ]; then
-                        echo "Error: Spark process did not start within 30 seconds. Run $prefix skipped"
-                        kill $main_pid 2>/dev/null || true
+                    # ERROR HANDLING: Process didn't start or wrapper died
+                    if [ -z "$spark_pid" ] || ! kill -0 "$spark_pid" 2>/dev/null; then
+                        echo "  !! Error: Spark process did not start or was not found."
+                        # Ensure wrapper is dead
+                        kill $main_shell_pid 2>/dev/null
+
+                        # Rename log
+                        mv "$LOG_FILE" "${LOG_DIR}/${PREFIX}_FAILED_STARTUP.txt"
+                        echo "Startup timed out or failed immediately." >> "${LOG_DIR}/${PREFIX}_FAILED_STARTUP.txt"
                         continue
                     fi
 
-                    echo "Spark process found with PID $spark_pid"
+                    echo "  -> Spark Java PID found: $spark_pid"
 
                     # Start monitoring scripts
-                    ./scripts/run-scripts/pid_stat.sh "$PREFIX" "$LOG_DIR/pid-stats" &
-                    pidstat_pid=$!
-                    ./scripts/run-scripts/tma_metrics.sh "$PREFIX" "$LOG_DIR/tma-metrics" &
-                    tma_pid=$!
+                    ./scripts/run-scripts/pid_stat.sh "$PREFIX" "$LOG_DIR/pid-stats" "$spark_pid" &
+                    monitor_pid_1=$!
 
-                    # Wait for main Spark process to complete
-                    wait $main_pid
+                    ./scripts/run-scripts/tma_metrics.sh "$PREFIX" "$LOG_DIR/tma-metrics" "$spark_pid" &
+                    monitor_pid_2=$!
 
-                    # Stop monitoring scripts
-                    kill $pidstat_pid $tma_pid 2>/dev/null || true
+                    # Wait for the main job to finish and CAPTURE EXIT CODE
+                    wait $main_shell_pid
+                    EXIT_CODE=$?
 
-                    echo "Run $PREFIX completed."
+                    # Stop monitors
+                    # Using || true to suppress errors if they already finished
+                    kill $monitor_pid_1 $monitor_pid_2 2>/dev/null || true
+
+                    # ERROR HANDLING: Check Exit Code
+                    if [ $EXIT_CODE -eq 0 ]; then
+                        echo "  -> Run Success. Compressing log..."
+                        gzip -f "$LOG_FILE"
+                    else
+                        echo "  !! Run FAILED (Exit Code: $EXIT_CODE)."
+                        mv "$LOG_FILE" "${LOG_DIR}/${PREFIX}_FAILED.txt"
+                        {
+                            echo ""
+                            echo "########################################"
+                            echo "SYSTEM ERROR: Process exited with code $EXIT_CODE"
+                            echo "########################################"
+                        } >> "${LOG_DIR}/${PREFIX}_FAILED.txt"
+                    fi
+
+                    echo "------------------------------------------------"
 
                 done
             done
         done
     done
 done
-
-
-# Show the command being run
-                    echo "$EXEC_COMMAND"
-
-                    # Execute the command
-                    eval "$EXEC_COMMAND" > "$LOG_FILE" 2>&1
-
-                    # Gzip the log file
-                    gzip "$LOG_FILE" && echo "Compressed: $LOG_FILE.gz"

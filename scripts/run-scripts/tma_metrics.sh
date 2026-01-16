@@ -1,27 +1,19 @@
 #!/bin/bash
 
-
-# Usage: ./so_metrics_tma.sh [prefix] [output_directory]
+# Usage: ./tma_metrics.sh [prefix] [output_directory] [PID_TO_MONITOR]
 
 PREFIX="$1"
 OUTDIR="$2"
-PID=$(pgrep -f "SparkSubmit" | head -n 1)
+TARGET_PID="$3"
 
-if [ -z "$PID" ]; then
-  echo "SparkSubmit process not found."
+if [ -z "$TARGET_PID" ]; then
+  echo "Error: No PID provided to tma_metrics.sh"
   exit 1
 fi
-
-echo "Monitoring SparkSubmit (PID=$PID) until exit"
-echo
 
 mkdir -p "$OUTDIR"
 
 FBASE="${OUTDIR}/${PREFIX:+${PREFIX}_}"
-OUTFILE="${FBASE}tma_${PID}.txt"
+OUTFILE="${FBASE}tma_${TARGET_PID}.txt"
 
-# Run perf stat metrics, output redirected to file
-perf stat -p "$PID" >"$OUTFILE" 2>&1
-
-echo "Perf stat output saved to $OUTFILE"
-
+exec perf stat -p "$TARGET_PID" >"$OUTFILE" 2>&1
