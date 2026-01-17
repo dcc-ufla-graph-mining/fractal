@@ -75,7 +75,7 @@ public class SubgraphOptimization implements Logging {
                 metaheuristic = new IteratedLocalSearch();
             } else {
                 if(metaheuristicType == TS) {
-                    metaheuristic = new TabuSearch(10);
+                    metaheuristic = new TabuSearch(10, 5);
                 } else {
                     throw new RuntimeException("Invalid metaheuristic");
                 }
