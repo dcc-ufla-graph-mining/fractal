@@ -117,8 +117,8 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
 
                     # ERROR HANDLING: Check Exit Code
                     if [ $EXIT_CODE -eq 0 ]; then
-                        echo "  -> Run Success. Compressing log..."
-                        gzip -f "$LOG_FILE"
+                        echo "  -> Run Success. Removing app log (keeping metrics only)..."
+                        rm "$LOG_FILE"  # <--- Deletes the main log
                     else
                         echo "  !! Run FAILED (Exit Code: $EXIT_CODE)."
                         mv "$LOG_FILE" "${LOG_DIR}/${PREFIX}_FAILED.txt"
