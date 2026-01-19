@@ -1,8 +1,20 @@
 #!/bin/bash
 
-set -e
+# Usage: ./run_profiling.sh [metaheuristic] [graph_label_type] [graph_directory] [log_directory]
 
-# Usage: ./run_profiling.sh [graph_label_type] [graph_directory]
+# Check args
+if [ $# -ne 4 ]; then
+    echo "Usage: $0 [metaheuristic] [graph_label_type] [graph_directory] [log_directory]"
+    exit 1
+fi
+
+# Build ONCE
+echo "Building project..."
+./gradlew jar
+if [ $? -ne 0 ]; then
+    echo "Error: Compilation failed. Exiting."
+    exit 1
+fi
 
 # Configuration
 MEMORY=50
@@ -12,25 +24,26 @@ NUM_INIT_SOLUTIONS=(100 1000)
 SEED=-1
 TIME_LIMIT_MS=(1000 2000 3000)
 OBJECTIVE_FUNCTIONS=("conductance" "densesubgraph" "degreeentropy" "triangledensestsubgraph" "labelentropy")
+
+# Map arguments
 METAHEURISTIC="$1"
 GRAPH_LABEL="$2"
-
-REPEATS=5 # Number of times to repeat the experiment for each combination of variables 
-
-# Define graph and log dir
 GRAPH_DIR="$3"
-GRAPH_NAME=$(basename "$GRAPH_DIR")	# Extract last directory name
 PREFIX_LOG_DIR="$4"
+
+GRAPH_NAME=$(basename "$GRAPH_DIR")
 LOG_DIR="$PREFIX_LOG_DIR/profiling/${GRAPH_NAME}"
 
-# Validate graph directory exists
+# Validate graph directory
 if [ ! -d "$GRAPH_DIR" ]; then
     echo "Error: Graph directory '$GRAPH_DIR' does not exist"
     exit 1
 fi
 
-# Create log directory
 mkdir -p "$LOG_DIR"
+echo "Starting Profiling experiments for $GRAPH_NAME..."
+
+REPEATS=5
 
 # Loop script start
 for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
@@ -38,27 +51,36 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
         for timeLimit in "${TIME_LIMIT_MS[@]}"; do
             for objFunc in "${OBJECTIVE_FUNCTIONS[@]}"; do
                 for run in $(seq 1 $REPEATS); do
-                    # Skip labelentropy for unlabeled graphs
+
                     if [ "$GRAPH_LABEL" = "unlabeled" ] && [ "$objFunc" = "labelentropy" ]; then
-                        echo "Skipping labelentropy for unlabeled graph"
                         continue
                     fi
 
-                    # Build the arguments and log filename
                     ARGS="$GRAPH_DIR $vertices $solutions $SEED $timeLimit $objFunc $METAHEURISTIC $GRAPH_LABEL"
-                    LOG_FILE="$LOG_DIR/$GRAPH_NAME-$METAHEURISTIC-${vertices}-${solutions}-${timeLimit}-${objFunc}-${run}.txt"
 
-                    # Build the full command
-                    EXEC_COMMAND="./gradlew jar && master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} event=cpu file=\"$LOG_DIR/$LOG_FILE\"  args=\"$ARGS\" ./bin/fractal-custom-app-profiling.sh"
+                    BASENAME="$GRAPH_NAME-$METAHEURISTIC-${vertices}-${solutions}-${timeLimit}-${objFunc}-${run}"
+                    LOG_FILE="$LOG_DIR/${BASENAME}.txt"
 
-                    # Show the command being run
-                    echo "$EXEC_COMMAND"
+                    # Build command
+                    EXEC_COMMAND="master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} event=cpu file=\"$LOG_FILE\" args=\"$ARGS\" ./bin/fractal-custom-app-profiling.sh"
 
-                    # Execute the command
-                    eval "$EXEC_COMMAND"
+                    echo "Profiling: $BASENAME"
 
-           	        # Gzip the log file
-                    gzip "$LOG_FILE" && echo "Compressed: $LOG_FILE.gz"
+                    # Execute (Note: No redirection > because the profiling tool writes the file)
+                    if eval "$EXEC_COMMAND"; then
+                        # Success
+                        gzip -f "$LOG_FILE"
+                    else
+                        # Failure
+                        echo "!!! FAILURE DETECTED: $BASENAME !!!"
+
+                        # Only try to rename if the tool actually created the file
+                        if [ -f "$LOG_FILE" ]; then
+                            mv "$LOG_FILE" "$LOG_DIR/${BASENAME}_FAILED.txt"
+                        else
+                            echo "Log file was not created by the profiler."
+                        fi
+                    fi
 
                 done
             done
