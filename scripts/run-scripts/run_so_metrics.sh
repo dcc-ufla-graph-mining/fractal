@@ -57,7 +57,7 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
                     PREFIX="$GRAPH_NAME-$METAHEURISTIC-$CORES-${vertices}-${solutions}-${timeLimit}-${objFunc}-${run}"
                     LOG_FILE="$LOG_DIR/${PREFIX}.txt"
 
-                    echo "Starting Run: $PREFIX"
+                    echo "Running Performance Metrics: $PREFIX"
 
                     # Build Command
                     EXEC_COMMAND="master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} args=\"$ARGS\" ./bin/fractal-custom-app.sh"

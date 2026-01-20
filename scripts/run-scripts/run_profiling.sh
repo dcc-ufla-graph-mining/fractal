@@ -64,7 +64,7 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
                     # Build command
                     EXEC_COMMAND="master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} event=cpu file=\"$LOG_FILE\" args=\"$ARGS\" ./bin/fractal-custom-app-profiling.sh"
 
-                    echo "Profiling: $BASENAME"
+                    echo "Running Profiling: $BASENAME"
 
                     # Execute (Note: No redirection > because the profiling tool writes the file)
                     if eval "$EXEC_COMMAND"; then

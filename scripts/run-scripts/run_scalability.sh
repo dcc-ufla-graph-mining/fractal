@@ -70,7 +70,7 @@ for ((core=$CORES_LOWER; core<=$CORES_UPPER; core++)); do
                         # Build command (Removed ./gradlew jar from here)
                         EXEC_COMMAND="master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${core} args=\"$ARGS\" ./bin/fractal-custom-app.sh"
 
-                        echo "Running Core $core: $BASENAME"
+                        echo "Running Scalability: $BASENAME"
 
                         # Execute with error handling
                         if eval "$EXEC_COMMAND" > "$LOG_FILE" 2>&1; then

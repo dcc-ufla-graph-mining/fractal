@@ -72,7 +72,7 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
                     # Build the full command
                     EXEC_COMMAND="master_memory=${MEMORY}g app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp worker_cores=${CORES} args=\"$ARGS\" ./bin/fractal-custom-app.sh"
 
-                    echo "Running: $BASENAME"
+                    echo "Running Optimality: $BASENAME"
 
                     # Execute the command
                     if eval "$EXEC_COMMAND" > "$LOG_FILE" 2>&1; then
