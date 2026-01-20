@@ -45,48 +45,50 @@ START_TIME=$(date +%s)
 echo "Starting Experiments Batch at $(date)" | tee -a "$MASTER_LOG"
 echo "Master Log saved to: $MASTER_LOG" | tee -a "$MASTER_LOG"
 
-# Loop through the ordered graphs
-for graph in "${GRAPH_ORDER[@]}"; do
-    label="${GRAPH_LABELS[$graph]}"
+# Run each script
+for script in "${SCRIPTS[@]}"; do
+    SCRIPT_PATH="./scripts/run-scripts/$script"
 
-    # Validation checks
-    if [ -z "$label" ]; then
-        echo "Warning: Graph '$graph' missing from label map. Skipping." | tee -a "$MASTER_LOG"
-        continue
-    fi
-    if [ ! -d "$GRAPHS_DIRECTORY/$graph" ]; then
-        echo "Error: Graph directory '$GRAPHS_DIRECTORY/$graph' not found" | tee -a "$MASTER_LOG"
+    if [ ! -x "$SCRIPT_PATH" ]; then
+        echo "Error: Script '$SCRIPT_PATH' not executable." | tee -a "$MASTER_LOG"
         continue
     fi
 
-    # Log Graph Start
-    echo "==========================================================" | tee -a "$MASTER_LOG"
-    echo "Processing graph: $graph (Label: $label) - $(date)" | tee -a "$MASTER_LOG"
-    echo "==========================================================" | tee -a "$MASTER_LOG"
+    echo "  >> Running $script..." | tee -a "$MASTER_LOG"
 
-    # Run each script
-    for script in "${SCRIPTS[@]}"; do
-        SCRIPT_PATH="./scripts/run-scripts/$script"
 
-        if [ ! -x "$SCRIPT_PATH" ]; then
-             echo "Error: Script '$SCRIPT_PATH' not executable." | tee -a "$MASTER_LOG"
-             continue
+    # Loop through the ordered graphs
+    for graph in "${GRAPH_ORDER[@]}"; do
+        label="${GRAPH_LABELS[$graph]}"
+
+        # Validation checks
+        if [ -z "$label" ]; then
+            echo "Warning: Graph '$graph' missing from label map. Skipping." | tee -a "$MASTER_LOG"
+            continue
         fi
 
-        echo "  >> Running $script..." | tee -a "$MASTER_LOG"
+        if [ ! -d "$GRAPHS_DIRECTORY/$graph" ]; then
+            echo "Error: Graph directory '$GRAPHS_DIRECTORY/$graph' not found" | tee -a "$MASTER_LOG"
+            continue
+        fi
+
+        # Log Graph Start
+        echo "==========================================================" | tee -a "$MASTER_LOG"
+        echo "Processing graph: $graph (Label: $label) - $(date)" | tee -a "$MASTER_LOG"
+        echo "==========================================================" | tee -a "$MASTER_LOG"
 
         # Execute
         "$SCRIPT_PATH" "$METAHEURISTIC" "$label" "$GRAPHS_DIRECTORY/$graph" "$PREFIX"
 
         EXIT_CODE=$?
         if [ $EXIT_CODE -ne 0 ]; then
-            echo "  !! $script finished with ERRORS (Code: $EXIT_CODE)" | tee -a "$MASTER_LOG"
+            echo "  !! $script finished with ERRORS for graph $graph (Code: $EXIT_CODE)" | tee -a "$MASTER_LOG"
         else
-            echo "  >> $script finished successfully." | tee -a "$MASTER_LOG"
+            echo "  >> $script finished successfully for graph $graph." | tee -a "$MASTER_LOG"
         fi
     done
 
-    echo "Finished processing graph: $graph" | tee -a "$MASTER_LOG"
+    echo "$script finished successfully for all graphs" | tee -a "$MASTER_LOG"
     echo "" | tee -a "$MASTER_LOG"
 done
 
