@@ -49,12 +49,11 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
                 while(noImproveIterations < k) {
                     boolean improvement = tabuImprovingLocalSearch(subgraph, tabuSubgraph, sNeighborhood);
                     if(improvement) {
-                        noImproveIterations = 1;
+                        noImproveIterations = 0;
                     } else {
                         noImproveIterations++;
                     }
                 }
-
                 neighborhoodIndex++;
             }
         }
@@ -85,7 +84,6 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
         } while (improvement && !Thread.currentThread().isInterrupted());
         return hasImproved;
     }
-
 
 
     public static class TabuList {
