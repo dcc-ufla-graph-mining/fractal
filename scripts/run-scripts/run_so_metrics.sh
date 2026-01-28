@@ -111,9 +111,9 @@ for solutions in "${NUM_INIT_SOLUTIONS[@]}"; do
                     wait $main_shell_pid
                     EXIT_CODE=$?
 
-                    # Stop monitors
-                    # Using || true to suppress errors if they already finished
-                    kill $monitor_pid_1 $monitor_pid_2 2>/dev/null || true
+                    # Wait for monitors to finish
+                    wait $monitor_pid_1
+                    wait $monitor_pid_2
 
                     # ERROR HANDLING: Check Exit Code
                     if [ $EXIT_CODE -eq 0 ]; then
