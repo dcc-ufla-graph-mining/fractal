@@ -46,7 +46,7 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
             while (neighborhoodIndex < neighborhoodSize && !Thread.currentThread().isInterrupted()) {
                 sNeighborhood = neighborhoodStructures[neighborhoodIndex];
                 int noImproveIterations = 0;
-                while(noImproveIterations < k) {
+                while(noImproveIterations < k && !Thread.currentThread().isInterrupted()) {
                     boolean improvement = tabuImprovingLocalSearch(subgraph, tabuSubgraph, sNeighborhood);
                     if(improvement) {
                         noImproveIterations = 1;    // The last iteration of tabuImprovingLocalSearch is always non-improving
