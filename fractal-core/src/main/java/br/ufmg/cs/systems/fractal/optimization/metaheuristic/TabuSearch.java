@@ -49,7 +49,7 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
                 while(noImproveIterations < k) {
                     boolean improvement = tabuImprovingLocalSearch(subgraph, tabuSubgraph, sNeighborhood);
                     if(improvement) {
-                        noImproveIterations = 0;
+                        noImproveIterations = 1;    // The last iteration of tabuImprovingLocalSearch is always non-improving
                     } else {
                         noImproveIterations++;
                     }
