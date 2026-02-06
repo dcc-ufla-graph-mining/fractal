@@ -55,33 +55,35 @@ def process_file(file_name):
 
     return info
 
-# citeseer-32-10-1000-2000-triangledensestsubgraph_1-profiling.txt.gz
-def get_info_fro_filename(file_name):
+# ils-citeseer-32-10-100-3000-triangledensestsubgraph-4_tma_3227789.txt
+def get_info_from_filename(file_name):
     file_name = os.path.basename(file_name)
     toks = file_name.split('-')
     graph = toks[0]
-    nthreads = int(toks[1])
-    size_initial_sol = int(toks[2])
-    num_initial_sol = int(toks[3])
-    timeout_vns = int(toks[4])
-    toks = toks[5].split("_")
-    obj_function = toks[0]
-    repetition = int(toks[1].replace('.txt.gz', '').split("-")[0])
+    metaheuristic = toks[1]
+    nthreads = int(toks[2])
+    size_initial_sol = int(toks[3])
+    num_initial_sol = int(toks[4])
+    timeout_ms = int(toks[5])
+    obj_function = toks[6]
+    toks = toks[7].split("_")
+    repetition = int(toks[0])
 
     return {
         'graph': graph,
-        'num_threads': nthreads,
+        'metaheuristic': metaheuristic,
         'size_initial_sol': size_initial_sol,
         'num_initial_sol': num_initial_sol,
-        'timeout_vns': timeout_vns,
+        'timeout_ms': timeout_ms,
         'obj_function': obj_function,
+        'num_threads': nthreads,
         'repetition': repetition
     }
 
 
 columns = None
 for file_name in sys.argv[1:]:
-    info_from_filename = get_info_fro_filename(file_name)
+    info_from_filename = get_info_from_filename(file_name)
     info = process_file(file_name)
     info = info_from_filename | info
     if columns is None:
