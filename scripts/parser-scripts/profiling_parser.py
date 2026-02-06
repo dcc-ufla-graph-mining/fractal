@@ -58,7 +58,13 @@ def process_file(file_name):
 # amazon-ils-10-100-1000-triangledensestsubgraph-5.txt.gz
 def get_info_from_filename(file_name):
     file_name = os.path.basename(file_name)
-    toks = file_name.split('-')
+
+    # Remove extensions first to make splitting cleaner
+    # Result: amazon-ils-10-100-1000-triangledensestsubgraph-5
+    clean_name = file_name.replace('.txt.gz', '').replace('.txt', '')
+
+    toks = clean_name.split('-')
+
     graph = toks[0]
     metaheuristic = toks[1]
     size_initial_sol = int(toks[2])
