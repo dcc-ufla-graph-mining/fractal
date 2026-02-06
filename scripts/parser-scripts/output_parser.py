@@ -36,21 +36,28 @@ RE_COST_FLOAT = re.compile(r'(\d+\.\d+)$')
 # Matches metaheuristic run progress: "MetaName runNumber"
 RE_META_RUN = re.compile(r'(VariableNeighborhoodSearch|IteratedLocalSearch|TabuSearch)\s+(\d+)')
 
-
 def parse_timestamp(line_start):
     """
-    Manually parses 'DD/MM/YY HH:MM:SS' from the start of a line.
-    Expects line_start to be at least 17 chars long.
+    Manually parses 'YY/MM/DD HH:MM:SS' from the start of a line.
+    Example: 26/01/31 21:31:42 -> Jan 31, 2026
     """
     try:
-        # Fixed format: 01/23/45 78:01:34
-        # Indices:      01234567890123456
-        day = int(line_start[0:2])
+        # Format: YY/MM/DD HH:MM:SS
+        # Indices: 0123456789...
+
+        # indices 0:2 is Year (e.g., 26 -> 2026)
+        year = int(line_start[0:2]) + 2000
+
+        # indices 3:5 is Month
         month = int(line_start[3:5])
-        year = int(line_start[6:8]) + 2000 # Assuming 20xx
+
+        # indices 6:8 is Day
+        day = int(line_start[6:8])
+
         hour = int(line_start[9:11])
         minute = int(line_start[12:14])
         second = int(line_start[15:17])
+
         return datetime(year, month, day, hour, minute, second)
     except (ValueError, IndexError):
         return None
@@ -206,14 +213,8 @@ def process_single_file(filepath):
 
         # --- F. Calculations ---
         effective_runs = max_run_id + 1 if max_run_id > -1 else 0
-
         time_to_best_ms = 0
         if first_meta_time and best_cost_time:
-            # Handle midnight crossing.
-            # If best_time < first_time, it implies the experiment finished the next day.
-            if best_cost_time < first_meta_time:
-                best_cost_time += timedelta(days=1)
-
             delta = best_cost_time - first_meta_time
             time_to_best_ms = int(delta.total_seconds() * 1000)
 
