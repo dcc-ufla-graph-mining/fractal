@@ -7,7 +7,7 @@ import re
 import os
 import gzip
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # --- Pre-compile Regex Patterns (Global) ---
@@ -140,7 +140,7 @@ def process_single_file(filepath):
                     if m: params['metaheuristic'] = m.group(1)
 
                 # --- B. Timestamp parsing ---
-                # Check if line starts with a digit (optimization to skip non-log lines)
+                # Check if line starts with a digit
                 current_time = None
                 if line and line[0].isdigit():
                     current_time = parse_timestamp(line)
@@ -209,6 +209,11 @@ def process_single_file(filepath):
 
         time_to_best_ms = 0
         if first_meta_time and best_cost_time:
+            # Handle midnight crossing.
+            # If best_time < first_time, it implies the experiment finished the next day.
+            if best_cost_time < first_meta_time:
+                best_cost_time += timedelta(days=1)
+
             delta = best_cost_time - first_meta_time
             time_to_best_ms = int(delta.total_seconds() * 1000)
 
