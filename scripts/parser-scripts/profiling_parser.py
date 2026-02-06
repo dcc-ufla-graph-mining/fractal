@@ -55,19 +55,17 @@ def process_file(file_name):
 
     return info
 
-# ils-citeseer-32-10-100-3000-triangledensestsubgraph-4_tma_3227789.txt
+# amazon-ils-10-100-1000-triangledensestsubgraph-5.txt.gz
 def get_info_from_filename(file_name):
     file_name = os.path.basename(file_name)
     toks = file_name.split('-')
     graph = toks[0]
     metaheuristic = toks[1]
-    nthreads = int(toks[2])
-    size_initial_sol = int(toks[3])
-    num_initial_sol = int(toks[4])
-    timeout_ms = int(toks[5])
-    obj_function = toks[6]
-    toks = toks[7].split("_")
-    repetition = int(toks[0])
+    size_initial_sol = int(toks[2])
+    num_initial_sol = int(toks[3])
+    timeout_ms = int(toks[4])
+    obj_function = toks[5]
+    repetition = int(toks[6])
 
     return {
         'graph': graph,
@@ -76,7 +74,6 @@ def get_info_from_filename(file_name):
         'num_initial_sol': num_initial_sol,
         'timeout_ms': timeout_ms,
         'obj_function': obj_function,
-        'num_threads': nthreads,
         'repetition': repetition
     }
 
