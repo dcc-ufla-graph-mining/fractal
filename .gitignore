@@ -4,4 +4,5 @@ build
 fractal-core/build
 fractal-apps/build
 plots/*.csv
+plots/*/*.csv
 plots/.ipynb_checkpoints
