@@ -14,7 +14,6 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
     // Time limit to execute the run
     private boolean improvement;
     private SolutionNeighborhood[] neighborhoodStructures;
-    private SolutionNeighborhood neighborhood;
     private int id;
     private final TabuList tabuList;
     private final int k;
@@ -38,6 +37,7 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
         int neighborhoodSize = neighborhoodStructures.length;
         int neighborhoodIndex;
         SolutionNeighborhood sNeighborhood;
+        boolean improvement;
 
         subgraph.copyTo(tabuSubgraph);
 
@@ -47,15 +47,15 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
 
             while (neighborhoodIndex < neighborhoodSize && !Thread.currentThread().isInterrupted()) {
                 sNeighborhood = neighborhoodStructures[neighborhoodIndex];
-                int noImproveIterations = 0;
-                
-                while(noImproveIterations < k && !Thread.currentThread().isInterrupted()) {
-                    boolean improvement = tabuImprovingLocalSearch(subgraph, tabuSubgraph, sNeighborhood);
+                int nonImproveIterations = 0;
+
+                while(nonImproveIterations < k && !Thread.currentThread().isInterrupted()) {
+                    improvement = tabuImprovingLocalSearch(subgraph, tabuSubgraph, sNeighborhood);
 
                     if(improvement) {
-                        noImproveIterations = 1;    // The last iteration of tabuImprovingLocalSearch is always non-improving
+                        nonImproveIterations = 1;    // The last iteration of tabuImprovingLocalSearch is always non-improving
                     } else {
-                        noImproveIterations++;
+                        nonImproveIterations++;
                     }
                 }
                 neighborhoodIndex++;
@@ -75,6 +75,7 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
         boolean improvement;
         boolean hasImproved = false;
         double bestCost = bestSubgraph.getCost();
+
         do {
             improvement = sNeighborhood.tabuImproving(tabuSubgraph, this.tabuList, bestCost);
             logApp(() -> String.format("%d %s", id, tabuSubgraph.toShortString()));
@@ -84,8 +85,8 @@ public class TabuSearch implements SubgraphOptimizationMetaheuristic, Logging {
                 bestCost = bestSubgraph.getCost();
                 hasImproved = true; // Track if at least one improvement happened
             }
-
         } while (improvement && !Thread.currentThread().isInterrupted());
+
         return hasImproved;
     }
 

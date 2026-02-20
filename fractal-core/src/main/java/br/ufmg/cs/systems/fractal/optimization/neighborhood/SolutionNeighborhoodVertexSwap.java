@@ -178,15 +178,14 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
     /**
      * Explores the neighborhood by testing all possible single-vertex exchanges (remove one, add one) and making the best change found.
      * Evaluates removing each non-articulation vertex from the subgraph and adding each valid neighbor.
-     * Selection criteria:
-     *  * 1. Non-tabu moves: Accepts the move with the highest cost improvement in the current neighborhood
-     *  * 2. Tabu moves: Only accepted if they improve the overall best cost found so far
-     *  * 3. Worsening moves: Allowed for non-tabu vertices when no improving moves exist
+     * Stop when finding a swap that improves the overall best cost, even if the swapped vertices are tabu.
+     * If no improvement is found, swap the vertices that results in the subgraph with the highest cost in the neighborhood.
+     * Worsening moves are allowed.
      *
      * @param subgraph Current solution to be modified
      * @param tabuList Vertices that cannot be modified unless they improve overall best cost
-     * @param bestCost The best objective value found so far in the search
-     * @return Array [removedVertex, addedVertex] if an exchange was performed, [-1, -1] otherwise
+     * @param bestCost The best subgraph score value found so far in the search
+     * @return true if the swap improved the overall best subgraph found, false otherwise.
      */
     @Override
     public boolean tabuImproving(VertexInducedOptimizationSubgraph subgraph, TabuList tabuList, double bestCost) {
@@ -269,15 +268,15 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
                             bestNeighborhoodCost = currentCost;
                         }
 
+                        // Rollback the vertex insertion
                         if(!improvement) {
-                            // Rollback the vertex insertion
                             subgraph.removeAndSetCost(currentVertexToAdd, 0);
                         }
                     }
                 }
             }
+            // Rollback the vertex removal
             if(!improvement) {
-                // Rollback the vertex removal
                 subgraph.addAndSetCost(currentVertexToRemove, initialCost);
             }
         }

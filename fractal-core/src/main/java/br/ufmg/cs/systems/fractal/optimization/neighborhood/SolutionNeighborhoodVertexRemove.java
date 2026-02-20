@@ -50,6 +50,10 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       return false;
    }
 
+   /**
+    * Perturbs the current solution by removing a random non-articulation vertex from the immediate neighborhood of the subgraph
+    * @param subgraph Current solution to be perturbed
+    */
    @Override
    public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
       adjLists = subgraph.getAdjLists();
@@ -77,13 +81,15 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
    /**
     * Remove from the subgraph the non-tabu and non-articulation vertex that results in the best cost to the subgraph compared
     * to the rest of the neighborhood.
-    * Accepts a tabu vertex if its removal improves the overall best cost found.
-    * Accepts worsening of the solution.
-    * The id's of the vertices in the subgraph MUST be positive (greater than or equal to 0)
+    * Stop when finding a removal that improves the overall best cost, even if the added vertex is tabu.
+    * If no improvement is found, remove the vertex that results in the subgraph with the highest cost in the neighborhood.
+    * Worsening moves are allowed.
+    * The id's of the vertices in the subgraph MUST be positive (greater than or equal to 0).
     *
-    * @param subgraph solution to be changed
-    * @param tabuList list of the vertices that cannot be modified unless it increases the overall best cost
-    * @return the vertex in the neighborhood that its removal results in the best cost
+    * @param subgraph solution to be changed.
+    * @param tabuList list of the vertices that cannot be modified unless it increases the overall best cost.
+    * @param bestCost The best subgraph score value found so far in the search
+    * @return true if the removal improved the overall best subgraph found, false otherwise.
     */
    @Override
    public boolean tabuImproving(VertexInducedOptimizationSubgraph subgraph, TabuList tabuList, double bestCost) {
@@ -130,8 +136,9 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
             bestNeighborhoodCost = currentCost;
          }
 
+         // Rollback the vertex removal
          if(!improvement) {
-            subgraph.addAndSetCost(currentVertex, initialCost); // Rollback the vertex removal
+            subgraph.addAndSetCost(currentVertex, initialCost);
          }
       }
 
@@ -141,6 +148,8 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
             subgraph.removeAndSetCost(bestVertex, bestNeighborhoodCost);
          }
          tabuList.add(bestVertex);
+
+         // Prints the removed vertex for tracking/log purposes
          subgraph.setUpdateString(String.format("-%d", bestVertex));
       }
 

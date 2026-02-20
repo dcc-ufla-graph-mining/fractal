@@ -63,6 +63,10 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         return false;
     }
 
+    /**
+     * Perturbs the current solution by inserting a random vertex from the immediate neighborhood of the subgraph
+     * @param subgraph Current solution to be perturbed
+     */
     @Override
     public void randomShake(VertexInducedOptimizationSubgraph subgraph) {
         adjLists = subgraph.getAdjLists();
@@ -71,7 +75,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists))
             return;
 
-        int count = 0;  // Variable to count the number of attempts to add a random vertex to prevent loops
+        int count = 0;      // Variable to count the number of attempts to insert a random vertex to prevent loops
         int maxIterations = 1000;   // Max number of random vertices to generate
         boolean vertexAdded = false;
         int numVertices = subgraphVertices.size();
@@ -127,15 +131,16 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
     }
 
     /**
-     * Add to the subgraph the non-tabu vertex in the neighborhood that results in the best cost to the subgraph compared
-     * to the rest of the neighborhood.
-     * Accepts a tabu vertex if its insertion improves the overall best cost found.
-     * Accepts worsening of the solution.
+     * Add to the subgraph the non-tabu vertex in the neighborhood that results in the best cost to the subgraph compared to the rest of the neighborhood.
+     * Stop when finding an insertion that improves the overall best cost, even if the added vertex is tabu.
+     * If no improvement is found, insert the vertex that results in the subgraph with the highest cost in the neighborhood.
+     * Worsening moves are allowed.
      * The id's of the vertices in the subgraph MUST be positive (greater than or equal to 0)
      *
      * @param subgraph solution to be changed
      * @param tabuList list of the vertices that cannot be modified unless it increases the overall best cost
-     * @return the vertex in the neighborhood that its insertion results in the best cost
+     * @param bestCost The best subgraph score value found so far in the search
+     * @return true if the insertion improved the overall best subgraph found, false otherwise
      */
     @Override
     public boolean tabuImproving(VertexInducedOptimizationSubgraph subgraph, TabuList tabuList, double bestCost) {
@@ -193,19 +198,22 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                         bestNeighborhoodCost = currentCost;
                     }
 
+                    // Rollback the insertion
                     if(!improvement) {
-                        subgraph.removeAndSetCost(currentVertex, initialCost); // Rollback the insertion
+                        subgraph.removeAndSetCost(currentVertex, initialCost);
                     }
                 }
             }
         }
 
-        // Insert the best vertex
+        // Insert the best vertex and add it to the tabu list
         if(bestVertex >= 0) {
             if(!improvement) {
                 subgraph.addAndSetCost(bestVertex, bestNeighborhoodCost);
             }
             tabuList.add(bestVertex);
+
+            // Prints the inserted vertex for tracking/log purposes
             subgraph.setUpdateString(String.format("+%d", bestVertex));
         }
 
