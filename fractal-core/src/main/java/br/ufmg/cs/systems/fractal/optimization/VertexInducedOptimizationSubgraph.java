@@ -26,7 +26,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
     // key: vertex; value: adjacency list of that vertex
     // adjacency list key: neighbor vertex; adjacency list value: edge
     private IntObjMap<IntIntMap> adjLists;
-    private final IntSet subgraphVertices;    // List of vertices in the subgraph
     private int numVertices;
     private int numEdges;
     private double cost;
@@ -51,7 +50,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
         this.objectiveFunction = null;
         this.underlyingGraph = null;
         this.adjLists = HashIntObjMaps.newMutableMap();
-        this.subgraphVertices = HashIntSets.newMutableSet();
     }
 
     /**
@@ -63,7 +61,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
         this.objectiveFunction = objectiveFunction;
         this.underlyingGraph = subgraph.getMainGraph();
         this.adjLists = HashIntObjMaps.newMutableMap();
-        this.subgraphVertices = HashIntSets.newMutableSet();
 
         Pattern pattern = subgraph.quickPattern();
         this.numVertices = subgraph.getNumVertices();
@@ -74,7 +71,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
             int vertex = subgraph.getVertices().getu(i);
             IntIntMap adjList = HashIntIntMaps.newMutableMap();
             adjLists.put(vertex, adjList);
-            subgraphVertices.add(vertex);
         }
 
         // Populate adjacency lists with edges
@@ -105,7 +101,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
             target.objectiveFunction = ReflectionSerializationUtils.clone(this.objectiveFunction); // Make a copy of original objective function
             target.underlyingGraph = this.getUnderlyingGraph();
             target.adjLists.clear();
-            target.subgraphVertices.clear();
 
             // For each vertex, create an adjacency list and add the vertex to the vertices set
             IntObjCursor<IntIntMap> adjCur = this.adjLists.cursor();
@@ -114,7 +109,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
                 vertex = adjCur.key();
                 IntIntMap adjList = HashIntIntMaps.newMutableMap(adjCur.value());
                 target.adjLists.put(vertex, adjList);
-                target.subgraphVertices.add(vertex);
             }
 
             target.numVertices = this.getNumVertices();
@@ -122,39 +116,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
             target.cost = this.getCost();
         }
     }
-
-    // Copy all the vertices in the subgraph adjacency list to the set of subgraph vertices
-    public void updateSubgraphVertices() {
-        subgraphVertices.clear();
-
-        IntObjCursor<IntIntMap> cur = adjLists.cursor();
-        while (cur.moveNext()) {
-            int vertex = cur.key();
-            subgraphVertices.add(vertex);
-        }
-    }
-
-    /**
-     * Compare the current subgraph with the target to check if they are equivalent
-     *
-     * @param target subgraph to be compared to the current one
-     * @return true if both are equivalent and false otherwise
-     */
-    public boolean isEquivalentTo(VertexInducedOptimizationSubgraph target) {
-        // Check if both subgraphs have the same number of vertices
-        if (this.getNumVertices() != target.getNumVertices()) {
-            return false;
-        }
-
-        // Check if both subgraphs have the same cost
-        if (this.getCost() != target.getCost()) {
-            return false;
-        }
-
-        // Check if all vertices in the current subgraph are also in the target subgraph and returns the result
-        return this.getSubgraphVertices().equals(target.getSubgraphVertices());
-    }
-
 
 
     public int vertexDegree(int u) {
@@ -175,15 +136,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
 
     public int getNumEdges() {
         return numEdges;
-    }
-
-    /**
-     * Returns the vertex set for read-only operations.
-     * WARNING: Callers must NOT modify the returned set.
-     * Use only for iteration and query operations.
-     */
-    public IntSet getSubgraphVertices() {
-        return subgraphVertices;
     }
 
     private int getVertexLabel(int vertex) {
@@ -258,8 +210,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
             }
         }
 
-
-        subgraphVertices.add(vertex);
         this.numVertices++;
     }
 
@@ -349,7 +299,6 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
         }
 
         adjLists.remove(vertex);
-        subgraphVertices.removeInt(vertex);
         this.numVertices--;
     }
 
