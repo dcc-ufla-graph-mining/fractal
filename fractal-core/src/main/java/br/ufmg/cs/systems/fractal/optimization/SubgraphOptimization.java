@@ -26,12 +26,14 @@ public class SubgraphOptimization implements Logging {
     public boolean run(MetaheuristicType metaheuristicType,
                        VertexInducedOptimizationSubgraph subgraph,
                        SolutionNeighborhood[] neighborhoodStructures,
-                       long timeLimitMs, ExecutorService executor) {
+                       long timeLimitMs,
+                       int tabuListSize,
+                       ExecutorService executor) {
 
         final int id = nextId.getAndIncrement();
         improvement = false;
         Future<?> future;
-        SubgraphOptimizationMetaheuristic metaheuristic = getSubgraphOptimizationMetaheuristic(metaheuristicType);
+        SubgraphOptimizationMetaheuristic metaheuristic = getSubgraphOptimizationMetaheuristic(metaheuristicType, tabuListSize);
 
         logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
 
@@ -63,24 +65,19 @@ public class SubgraphOptimization implements Logging {
      * Creates and returns the object of the metaheuristic provided as a parameter
      *
      * @param metaheuristicType Name of the metaheuristic to be used to improve the initial solutions
+     * @param tabuListSize Length of the tabu list for the metaheuristic TabuSearch. If a different metaheuristic has been chosen, this variable will not be used.
      * @return An object of the given metaheuristic
      */
-    private static SubgraphOptimizationMetaheuristic getSubgraphOptimizationMetaheuristic(MetaheuristicType metaheuristicType) {
-        SubgraphOptimizationMetaheuristic metaheuristic;
-
-        if(metaheuristicType == VNS) {
-            metaheuristic = new VariableNeighborhoodSearch();
-        } else {
-            if(metaheuristicType == ILS) {
-                metaheuristic = new IteratedLocalSearch();
-            } else {
-                if(metaheuristicType == TS) {
-                    metaheuristic = new TabuSearch(10, 5);
-                } else {
-                    throw new RuntimeException("Invalid metaheuristic");
-                }
-            }
+    private static SubgraphOptimizationMetaheuristic getSubgraphOptimizationMetaheuristic(MetaheuristicType metaheuristicType, int tabuListSize) {
+        switch (metaheuristicType) {
+            case VNS:
+                return new VariableNeighborhoodSearch();
+            case ILS:
+                return new IteratedLocalSearch();
+            case TS:
+                return new TabuSearch(tabuListSize, 1);
+            default:
+                throw new RuntimeException("Invalid metaheuristic: " + metaheuristicType);
         }
-        return metaheuristic;
     }
 }

@@ -23,7 +23,8 @@ case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
 class LocalSearchAggregation
 (objectiveFunction: SerializableToDoubleFunction[VertexInducedOptimizationSubgraph],
  timeLimitMs: Long,
- metaheuristic: MetaheuristicType)
+ metaheuristic: MetaheuristicType,
+ tabuListSize: Int)
   extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] with Logging {
 
   override def reduce(sc1: SubgraphAndCost,
@@ -46,7 +47,7 @@ class LocalSearchAggregation
 
     try {
       val optimization  = new SubgraphOptimization()
-      optimization.run(metaheuristic, subgraph, neighborhoodStructures, timeLimitMs, executor);
+      optimization.run(metaheuristic, subgraph, neighborhoodStructures, timeLimitMs, tabuListSize, executor);
     } catch {
       case e: RuntimeException =>
         logApp(s"EXCEPTION: ${e} ${e.getStackTrace.slice(0, 5).mkString("," + "")}")
@@ -246,12 +247,16 @@ object SubgraphOptimizationApp extends Logging {
       case "ils" => ILS
       case "ts" => TS
       case _ =>
-        throw  new RuntimeException(s"Invalid metaheuristic: ${args(3)}")
+        throw  new RuntimeException(s"Invalid metaheuristic: ${args(6)}")
     }
-    val graphLabelType =
-      if (args.length == 8 && args(7).nonEmpty) args(7).toLowerCase
-      else "unlabeled"
 
+    if((metaheuristic == MetaheuristicType.VNS || metaheuristic == MetaheuristicType.ILS) && args.length != 8) {
+      throw new RuntimeException(s"Invalid command! Check the parameters.")
+    } else if(metaheuristic == MetaheuristicType.TS && args.length != 9) {
+      throw new RuntimeException(s"Invalid command! Check the parameters.")
+    }
+
+    val graphLabelType = args(7).toLowerCase
     val fgraph = graphLabelType match{
       case "unlabeled" =>
         fc.unlabeledGraphFromAdjLists(graphPath).set("ws_external", false)
@@ -262,6 +267,12 @@ object SubgraphOptimizationApp extends Logging {
       case _ =>
         throw new RuntimeException(s"Invalid graph label type: ${graphLabelType}. Use: unlabeled|vertexlabeled|vertexedgelabeled")
     }
+
+    val tabuListSize =
+      if(args.length == 9 && args(8).nonEmpty)
+        args(8).toInt
+      else
+        -1
 
     // materialize input graph
     fgraph.vfractoid.extend(1).aggregationCount
@@ -279,7 +290,7 @@ object SubgraphOptimizationApp extends Logging {
         classOf[RandomWalkEnumerator[VertexInducedSubgraph]])
 
 
-    val aggregation = new LocalSearchAggregation(objectiveFunction, timeLimitMs, metaheuristic)
+    val aggregation = new LocalSearchAggregation(objectiveFunction, timeLimitMs, metaheuristic, tabuListSize)
 
     val bestSubgraph = subgraphs.aggregationLongObj(aggregation)
       .reduceByKey((sc1, sc2) => {aggregation.reduce(sc1, sc2); sc1})
