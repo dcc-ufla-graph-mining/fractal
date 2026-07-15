@@ -206,7 +206,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             }
         }
 
-        // Insert the best vertex and add it to the tabu list
+        // Insert the best vertex to the subgraph and add it to the tabu list
         if(bestVertex >= 0) {
             if(!improvement) {
                 subgraph.addAndSetCost(bestVertex, bestNeighborhoodCost);
@@ -215,6 +215,10 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
             // Prints the inserted vertex for tracking/log purposes
             subgraph.setUpdateString(String.format("+%d", bestVertex));
+        } else {
+            // Advance the tabu list even when no move is performed
+            tabuList.removeOldest();
+            subgraph.setUpdateString("=");
         }
 
         return improvement;

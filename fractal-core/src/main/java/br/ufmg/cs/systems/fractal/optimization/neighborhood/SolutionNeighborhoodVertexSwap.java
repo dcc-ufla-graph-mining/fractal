@@ -288,13 +288,16 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
                 subgraph.addAndSetCost(bestVertexToAdd, bestCost);
             }
 
-            // Add the vertices to the tabu list
+            // Insert the swaped vertices into the tabu list
             tabuList.add(bestVertexToRemove);
             tabuList.add(bestVertexToAdd);
 
-            // Prints the swaped vertices for tracking/log purposes
+            // Prints the swapped vertices for tracking/log purposes
             subgraph.setUpdateString(String.format("-%d+%d", bestVertexToRemove, bestVertexToAdd));
 
+        } else {
+            tabuList.removeOldest();
+            subgraph.setUpdateString("=");
         }
 
         return improvement;

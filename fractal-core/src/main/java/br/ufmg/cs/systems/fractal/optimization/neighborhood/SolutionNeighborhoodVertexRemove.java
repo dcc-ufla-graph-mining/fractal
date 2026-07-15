@@ -151,6 +151,10 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
          // Prints the removed vertex for tracking/log purposes
          subgraph.setUpdateString(String.format("-%d", bestVertex));
+      } else {
+         // Advance the tabu list even when no move is performed
+         tabuList.removeOldest();
+         subgraph.setUpdateString("=");
       }
 
       return improvement;
