@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Fractal GM-Opt — Subgraph Optimization</title>
+    <meta
+            name="description"
+            content="A framework for subgraph optimization using user-defined objective functions and extensible neighborhood-search strategies. Built on Fractal and Apache Spark."
+    >
+    <meta name="theme-color" content="#b8431c">
+
+    <link rel="stylesheet" href="./styles.css">
+</head>
+
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<!-- Navigation stays visible and usable without JavaScript. -->
+<header class="site-header">
+    <div class="container header-inner">
+        <a class="brand" href="#top" aria-label="Fractal GM-Opt home">
+            <span class="brand-mark" aria-hidden="true">F</span>
+            <span>Fractal <strong>GM-Opt</strong></span>
+        </a>
+
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="#overview">Overview</a>
+            <a href="#research">Research</a>
+            <a href="#development">In development</a>
+            <a
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/docs/README.md"
+            >Documentation</a>
+            <a
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-gm-opt"
+            >GitHub <span aria-hidden="true">↗</span></a>
+        </nav>
+    </div>
+</header>
+
+<main id="main-content">
+    <!-- Introduce the framework before listing individual implementations. -->
+    <section class="hero section" id="top" aria-labelledby="hero-title">
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <span class="status-label">Under active development</span>
+
+                <p class="eyebrow">Fractal GM-Opt</p>
+                <h1 id="hero-title">
+                    A General Purpose Subgraph Optimization Framework.
+                </h1>
+
+                <p class="hero-description">
+                    Define how candidate subgraphs are scored and explore them using
+                    neighborhood-search metaheuristics. Build on extensible search
+                    strategies and parallel execution through Fractal and Apache Spark.
+                </p>
+
+                <div class="actions">
+                    <a
+                            class="button button-primary"
+                            href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/README.md"
+                    >Get started <span aria-hidden="true">→</span></a>
+
+                    <a
+                            class="button button-secondary"
+                            href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-gm-opt"
+                    >Explore the code</a>
+                </div>
+            </div>
+
+            <aside class="workflow-panel" aria-labelledby="workflow-title">
+                <p class="eyebrow">From problem to search</p>
+                <h2 id="workflow-title">You define the optimization problem.</h2>
+                <p>The framework coordinates the exploration.</p>
+
+                <ol class="workflow-list">
+                    <li>
+                        <span class="step-number" aria-hidden="true">01</span>
+                        <div>
+                            <strong>Provide a graph</strong>
+                            <span>Load the network you want to analyze.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-number" aria-hidden="true">02</span>
+                        <div>
+                            <strong>Define an objective function</strong>
+                            <span>Express what makes a candidate subgraph useful.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-number" aria-hidden="true">03</span>
+                        <div>
+                            <strong>Configure the search</strong>
+                            <span>Select an implemented metaheuristic and execution settings.</span>
+                        </div>
+                    </li>
+                </ol>
+            </aside>
+        </div>
+    </section>
+
+    <section class="section" id="overview" aria-labelledby="overview-title">
+        <div class="container">
+            <div class="section-heading">
+                <p class="eyebrow">The framework</p>
+                <h2 id="overview-title">A common foundation for different problems.</h2>
+                <p>
+                    The objective function expresses the problem. Search strategies
+                    determine how candidate solutions are generated and explored.
+                </p>
+            </div>
+
+            <div class="feature-grid">
+                <article class="feature">
+                    <span class="feature-number" aria-hidden="true">01</span>
+                    <h3>Define your objective function</h3>
+                    <p>
+                        Score vertex-induced subgraphs using candidate and underlying-graph
+                        information. Supply your implementation as a Java class or a
+                        JavaScript file.
+                    </p>
+                </article>
+
+                <article class="feature">
+                    <span class="feature-number" aria-hidden="true">02</span>
+                    <h3>Extend the search</h3>
+                    <p>
+                        Integrate new metaheuristics, neighborhoods, and initial solution
+                        generation strategies through the framework’s code interfaces.
+                    </p>
+                </article>
+
+                <article class="feature">
+                    <span class="feature-number" aria-hidden="true">03</span>
+                    <h3>Explore in parallel</h3>
+                    <p>
+                        Optimize multiple initial solutions using the scheduling and
+                        graph-processing infrastructure provided by Spark and Fractal.
+                    </p>
+                </article>
+            </div>
+
+            <div class="implementation-note">
+                <strong>Current implementations</strong>
+                <p>
+                    VNS, ILS, and TS; vertex addition, removal, and swapping;
+                    and random-walk-based initial solution generation.
+                    These are starting points, not the limits of the framework.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section
+            class="section section-tinted"
+            id="objective-functions"
+            aria-labelledby="objective-title"
+    >
+        <div class="container example-grid">
+            <div>
+                <p class="eyebrow">Express your problem</p>
+                <h2 id="objective-title">Start with a scoring function.</h2>
+                <p>
+                    This example scores a subgraph by its number of edges divided by
+                    its number of vertices. Larger scores are preferred.
+                </p>
+                <p>
+                    Replace the calculation with your own objective function.
+                    Java and JavaScript implementations use the same candidate
+                    representation.
+                </p>
+
+                <a
+                        class="text-link"
+                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/docs/objective-functions.md"
+                >Learn to implement an objective function
+                    <span aria-hidden="true">→</span>
+                </a>
+            </div>
+
+            <div class="code-panel">
+                <div class="code-heading">
+                    <span>density.js</span>
+                    <span>JavaScript example</span>
+                </div>
+                <pre tabindex="0" aria-label="JavaScript density objective function"><code>// Return edges per vertex without modifying the candidate.
+function evaluate(subgraph) {
+    var vertices = subgraph.getNumVertices();
+
+    if (vertices === 0) {
+        return 0.0;
+    }
+
+    return subgraph.getNumEdges() / vertices;
+}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="getting-started" aria-labelledby="start-title">
+        <div class="container">
+            <div class="section-heading">
+                <p class="eyebrow">Getting started</p>
+                <h2 id="start-title">From setup to your first optimization.</h2>
+                <p>
+                    Follow the repository guide for requirements, input graph format,
+                    execution commands, and examples.
+                </p>
+            </div>
+
+            <div class="guide-grid">
+                <a
+                        class="guide-card"
+                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/README.md"
+                >
+                    <span class="eyebrow">Start here</span>
+                    <h3>Install and run <span aria-hidden="true">↗</span></h3>
+                    <p>Configure Java and Spark, build the framework, and run an example.</p>
+                </a>
+
+                <a
+                        class="guide-card"
+                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/docs/README.md"
+                >
+                    <span class="eyebrow">Go further</span>
+                    <h3>Understand and extend <span aria-hidden="true">↗</span></h3>
+                    <p>Explore the architecture, solution representation, and strategy interfaces.</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Publication claims apply to the study, not every current feature. -->
+    <section
+            class="section section-tinted"
+            id="research"
+            aria-labelledby="research-title"
+    >
+        <div class="container">
+            <div class="section-heading">
+                <p class="eyebrow">Research</p>
+                <h2 id="research-title">Research behind the framework.</h2>
+                <p>
+                    Related studies explore subgraph optimization and the behavior of
+                    neighborhood-search methods in parallel systems.
+                </p>
+            </div>
+
+            <article class="paper-card" aria-labelledby="paper-title">
+                <div class="paper-meta">
+                    <span class="status-label status-published">Published</span>
+                    <span>SSCAD 2025 · Pages 85–96</span>
+                </div>
+
+                <h3 id="paper-title">
+                    <a href="https://sol.sbc.org.br/index.php/sscad/article/view/37889">
+                        An Experimental Study of Variable Neighborhood Search for
+                        General-Purpose Subgraph Optimization in Parallel Systems
+                    </a>
+                </h3>
+
+                <p class="paper-authors">
+                    Diogo Carvalho, Mayron Moreira, and Vinícius Dias
+                </p>
+
+                <p>
+                    An experimental study of parallel Variable Neighborhood Search for
+                    connected subgraph optimization, examining solution quality,
+                    scalability, and computational bottlenecks.
+                </p>
+
+                <div class="paper-links">
+                    <a
+                            class="text-link"
+                            href="https://sol.sbc.org.br/index.php/sscad/article/view/37889"
+                    >Read the paper <span aria-hidden="true">↗</span></a>
+                    <a
+                            class="text-link"
+                            href="https://doi.org/10.5753/sscad.2025.15847"
+                    >DOI <span aria-hidden="true">↗</span></a>
+                </div>
+
+                <p class="small-note">
+                    The publication describes its evaluated implementation and
+                    experiments. Its results do not establish guarantees for every
+                    feature or configuration in the current framework.
+                </p>
+            </article>
+        </div>
+    </section>
+
+    <!-- Keep upcoming work separate from available capabilities. -->
+    <section
+            class="section"
+            id="development"
+            aria-labelledby="development-title"
+    >
+        <div class="container">
+            <div class="section-heading">
+                <p class="eyebrow">In development</p>
+                <h2 id="development-title">Work in progress.</h2>
+                <p>
+                    These capabilities are being developed and are not part of the
+                    currently documented user workflow.
+                </p>
+            </div>
+
+            <div class="development-grid">
+                <article class="development-card">
+                    <span class="status-label">In development</span>
+                    <h3>Chatbot-assisted objective functions</h3>
+                    <p>
+                        Help users describe optimization problems through conversation
+                        and create objective function implementations with chatbot
+                        assistance.
+                    </p>
+                </article>
+
+                <article class="development-card">
+                    <span class="status-label">In development</span>
+                    <h3>Approximate objective function evaluation</h3>
+                    <p>
+                        Explore approximations of expensive objective functions to
+                        reduce evaluation cost during search.
+                    </p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section
+            class="foundations"
+            aria-labelledby="foundations-title"
+    >
+        <div class="container foundations-inner">
+            <div>
+                <h2 id="foundations-title">Built on Fractal and Apache Spark.</h2>
+                <p>
+                    Fractal supplies graph-processing infrastructure on Spark.
+                    Fractal GM-Opt adds the subgraph optimization workflow.
+                </p>
+            </div>
+
+            <div class="foundation-links">
+                <a class="text-link" href="https://github.com/dccspeed/fractal">
+                    Fractal <span aria-hidden="true">↗</span>
+                </a>
+                <a class="text-link" href="https://spark.apache.org/">
+                    Apache Spark <span aria-hidden="true">↗</span>
+                </a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-inner">
+        <p><strong>Fractal GM-Opt</strong> · Under active development</p>
+
+        <nav aria-label="Footer navigation">
+            <a
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-gm-opt"
+            >Source code</a>
+            <a
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/LICENSE"
+            >Apache License 2.0</a>
+        </nav>
+    </div>
+</footer>
+</body>
+</html>
