@@ -43,4 +43,55 @@ public class ReflectionSerializationUtils {
    public static <T extends Serializable> T clone(T obj) {
       return deserialize(serialize(obj));
    }
+
+   /**
+    * Copies an object using the supplied loader to resolve serialized classes.
+    *
+    * <p>Supports objective implementations and helper classes supplied
+    * in external application JARs.</p>
+    *
+    * @param obj object to copy
+    * @param classLoader loader that can resolve the object's implementation
+    * @param <T> serializable object type
+    * @return an independent deserialized copy
+    * @throws IllegalArgumentException if the object is null
+    * @throws RuntimeException if serialization or deserialization fails
+    */
+   @SuppressWarnings("unchecked")
+   public static <T extends Serializable> T clone(
+           T obj, final ClassLoader classLoader) {
+
+      if (obj == null) {
+         throw new IllegalArgumentException("The object to copy must not be null.");
+      }
+
+      byte[] bytes = serialize(obj);
+
+      try (ByteArrayInputStream input = new ByteArrayInputStream(bytes);
+           ObjectInputStream objects = new ObjectInputStream(input) {
+
+              @Override
+              protected Class<?> resolveClass(ObjectStreamClass descriptor)
+                      throws IOException, ClassNotFoundException {
+
+                 if (classLoader != null) {
+                    try {
+                       return Class.forName(
+                               descriptor.getName(), false, classLoader);
+                    } catch (ClassNotFoundException ignored) {
+                       // Preserve standard handling, including primitives.
+                    }
+                 }
+
+                 return super.resolveClass(descriptor);
+              }
+           }) {
+         return (T) objects.readObject();
+      } catch (IOException | ClassNotFoundException e) {
+         throw new RuntimeException(
+                 "Could not copy object of class '"
+                         + obj.getClass().getName() + "'.",
+                 e);
+      }
+   }
 }

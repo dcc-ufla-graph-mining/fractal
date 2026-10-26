@@ -51,9 +51,17 @@ public class SubgraphOptimization implements Logging {
                 subgraph.setFinished(true);
             }
         } catch (ExecutionException e) {
-            throw new RuntimeException(metaheuristic + " run failed " + e.getCause());
+            throw new RuntimeException(
+                    metaheuristic + " run failed.",
+                    e.getCause());
         } catch (InterruptedException e) {
-            throw new RuntimeException(metaheuristic + " run interrupted " + e.getCause());
+            // Preserve the caller's cancellation request.
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+
+            throw new RuntimeException(
+                    metaheuristic + " run interrupted.",
+                    e);
         } finally {
             logApp(() -> String.format("%d %s", id, subgraph.toShortStringDetailed()));
         }

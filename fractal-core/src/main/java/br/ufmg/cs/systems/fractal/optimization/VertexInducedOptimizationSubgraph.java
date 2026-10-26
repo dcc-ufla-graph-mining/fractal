@@ -6,17 +6,15 @@ import br.ufmg.cs.systems.fractal.pattern.PatternEdge;
 import br.ufmg.cs.systems.fractal.subgraph.VertexInducedSubgraph;
 import br.ufmg.cs.systems.fractal.util.ReflectionSerializationUtils;
 import br.ufmg.cs.systems.fractal.util.collection.IntArrayListView;
+import br.ufmg.cs.systems.fractal.optimization.objective.ObjectiveCopyStrategy;
 import com.koloboke.collect.IntCursor;
 import com.koloboke.collect.map.IntIntMap;
 import com.koloboke.collect.map.IntObjCursor;
 import com.koloboke.collect.map.IntObjMap;
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 import com.koloboke.collect.map.hash.HashIntObjMaps;
-import com.koloboke.collect.set.IntSet;
-import com.koloboke.collect.set.hash.HashIntSets;
 import com.koloboke.function.IntIntConsumer;
 import com.koloboke.function.IntObjConsumer;
-
 import java.io.*;
 import java.util.concurrent.*;
 import java.util.function.ToDoubleFunction;
@@ -98,7 +96,19 @@ public class VertexInducedOptimizationSubgraph implements Externalizable {
                 return;
             }
 
-            target.objectiveFunction = ReflectionSerializationUtils.clone(this.objectiveFunction); // Make a copy of original objective function
+            // Copy the objective function
+            if (this.objectiveFunction instanceof ObjectiveCopyStrategy) {
+                // Resource-backed evaluators control copying within their run.
+                target.objectiveFunction =
+                        ((ObjectiveCopyStrategy) this.objectiveFunction)
+                                .copyForSubgraph();
+            } else {
+                // Ordinary Java objectives retain independent serialized state.
+                target.objectiveFunction = ReflectionSerializationUtils.clone(
+                        this.objectiveFunction,
+                        this.objectiveFunction.getClass().getClassLoader());
+            }
+
             target.underlyingGraph = this.getUnderlyingGraph();
             target.adjLists.clear();
 

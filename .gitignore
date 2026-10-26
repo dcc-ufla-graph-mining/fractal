@@ -6,3 +6,4 @@ fractal-apps/build
 plots/*.csv
 plots/*/*.csv
 plots/.ipynb_checkpoints
+/objectives/java/build/

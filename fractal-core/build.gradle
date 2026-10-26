@@ -35,6 +35,33 @@ repositories {
     }
 }
 
+/*
+ * Read the JavaScript runtime version before configuring dependencies.
+ */
+def javascriptRuntimeProperties = new Properties()
+def javascriptRuntimeFile =
+        rootProject.file('conf/javascript-runtime.properties')
+
+if (!javascriptRuntimeFile.isFile()) {
+    throw new GradleException(
+            "JavaScript runtime configuration is missing: ${javascriptRuntimeFile}"
+    )
+}
+
+javascriptRuntimeFile.withInputStream { input ->
+    javascriptRuntimeProperties.load(input)
+}
+
+def graaljsVersion =
+        javascriptRuntimeProperties.getProperty('graaljs.version')?.trim()
+
+if (!graaljsVersion) {
+    throw new GradleException(
+            'Missing graaljs.version in conf/javascript-runtime.properties.'
+    )
+}
+
+
 dependencies {
     // framework to be probed
     implementation 'org.apache.spark:spark-core_2.13:3.5.0'
@@ -55,6 +82,12 @@ dependencies {
 
     implementation 'org.jgrapht:jgrapht-opt:1.4.0'
 
+    // The adapter compiles against the Polyglot API.
+    implementation "org.graalvm.sdk:graal-sdk:${graaljsVersion}"
+
+    // The JavaScript implementation is needed when executing scripts.
+    runtimeOnly "org.graalvm.js:js:${graaljsVersion}"
+
 }
 
 sourceSets {
@@ -67,3 +100,53 @@ sourceSets {
         }
     }
 }
+
+
+/*
+ * Records the build environment used to prepare external Java objectives.
+ * Dependency versions come from this project's resolved classpath.
+ */
+def objectiveContextMetadata = tasks.register(
+        'writeObjectiveContext',
+        org.gradle.api.tasks.WriteProperties
+) {
+    description = 'Records the compilation environment for external objectives.'
+
+    outputFile = layout.buildDirectory
+            .file('objective-context-metadata/context.properties')
+            .get()
+            .asFile
+
+    property 'frameworkVersion', project.version.toString()
+    property 'gradleVersion', gradle.gradleVersion
+    property 'javaMajorVersion', JavaVersion.current().majorVersion
+    property 'javaRuntimeVersion', System.getProperty('java.version')
+}
+
+/*
+ * Exports the compiled framework and its compilation dependencies.
+ * External objectives consume these files without invoking this build.
+ */
+tasks.register('prepareObjectiveContext', Sync) {
+    group = 'build'
+    description = 'Prepares the framework API and dependencies for Java objectives.'
+
+    dependsOn tasks.named('jar')
+    dependsOn objectiveContextMetadata
+
+    into layout.buildDirectory.dir('objective-context')
+
+    // Reject conflicting filenames instead of silently replacing dependencies.
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+
+    from(tasks.named('jar').flatMap { it.archiveFile }) {
+        into 'lib'
+    }
+
+    from(configurations.compileClasspath) {
+        into 'lib'
+    }
+
+    from(objectiveContextMetadata)
+}
+

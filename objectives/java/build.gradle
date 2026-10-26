@@ -1,0 +1,114 @@
+plugins {
+    id 'java'
+}
+
+/*
+ * Use a prepared framework context instead of a project dependency.
+ * Building objectives must never trigger framework compilation.
+ */
+def contextDirectory = file('../../fractal-core/build/objective-context')
+def metadataFile = new File(contextDirectory, 'context.properties')
+def libraryDirectory = new File(contextDirectory, 'lib')
+
+if (!metadataFile.isFile()) {
+    throw new GradleException(
+            'The framework objective context is missing. ' +
+                    'From the repository root, run: ' +
+                    './gradlew :fractal-core:prepareObjectiveContext'
+    )
+}
+
+def context = new Properties()
+metadataFile.withInputStream { input ->
+    context.load(input)
+}
+
+def frameworkVersion = context.getProperty('frameworkVersion')
+def expectedGradleVersion = context.getProperty('gradleVersion')
+def expectedJavaVersion = context.getProperty('javaMajorVersion')
+
+if (!frameworkVersion || !expectedGradleVersion || !expectedJavaVersion) {
+    throw new GradleException(
+            'The framework objective context is incomplete. ' +
+                    'Run :fractal-core:prepareObjectiveContext again.'
+    )
+}
+
+/*
+ * Fail early when the IDE or command line uses a different build environment.
+ */
+if (gradle.gradleVersion != expectedGradleVersion) {
+    throw new GradleException(
+            "Expected Gradle ${expectedGradleVersion}, " +
+                    "but this build is using ${gradle.gradleVersion}. " +
+                    'Use the project Gradle wrapper.'
+    )
+}
+
+if (JavaVersion.current().majorVersion != expectedJavaVersion) {
+    throw new GradleException(
+            "Expected JDK ${expectedJavaVersion}, " +
+                    "but Gradle is running on JDK ${JavaVersion.current().majorVersion}. " +
+                    'Configure JAVA_HOME or the IDE Gradle JVM to match the framework.'
+    )
+}
+
+def frameworkJar = new File(
+        libraryDirectory,
+        "fractal-core-${frameworkVersion}.jar"
+)
+
+if (!frameworkJar.isFile()) {
+    throw new GradleException(
+            "The framework API JAR is missing: ${frameworkJar}. " +
+                    'Run :fractal-core:prepareObjectiveContext again.'
+    )
+}
+
+def frameworkLibraries = fileTree(libraryDirectory) {
+    include '*.jar'
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(expectedJavaVersion)
+    targetCompatibility = JavaVersion.toVersion(expectedJavaVersion)
+}
+
+dependencies {
+    /*
+     * These libraries are supplied by the framework at execution time.
+     * They must not be packaged inside the objective JAR.
+     */
+    compileOnly frameworkLibraries
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    // On newer JDKs, restrict both language features and APIs to the target JDK.
+    if (Integer.parseInt(expectedJavaVersion) >= 9) {
+        options.release.set(Integer.parseInt(expectedJavaVersion))
+    }
+}
+
+tasks.named('jar', Jar) {
+    archiveFileName.set('objectives.jar')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.named('wrapper', Wrapper) {
+    gradleVersion = expectedGradleVersion
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+/*
+ * Compile Java sources under src/.
+ */
+sourceSets {
+    main {
+        java {
+            setSrcDirs(['src'])
+        }
+    }
+}
