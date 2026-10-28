@@ -18,10 +18,15 @@ public class RandomWalkEnumerator<S extends Subgraph> extends SubgraphEnumerator
 
    @Override
    public void init(Configuration config, Computation<S> computation) {
-      long seed = config.getLong("random_walk_seed", 1L);
-      seed += computation.getPartitionId();
-      rand = new Random(seed);
       samplesPerThread = config.getInteger("samples_per_thread", 1);
+      long seed = config.getLong("random_walk_seed", 1L);
+
+      if (seed == -1) {
+         rand = new Random();
+      } else {
+         seed += computation.getPartitionId();
+         rand = new Random(seed);
+      }
    }
 
    @Override
