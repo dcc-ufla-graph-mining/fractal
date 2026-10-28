@@ -719,12 +719,55 @@ deploy_mode=${deploy_mode:-client}
 log_level=${log_level:-info}
 timelimit=${timelimit:--1}
 steptimelimit=${steptimelimit:--1}
-jars=${jars:-""}
+
+# Use the standard objective JAR unless the user explicitly overrides it.
+if [[ ! ${jars+x} ]]; then
+    default_objectives_jar="$FRACTAL_HOME/objectives/java/build/libs/objectives.jar"
+
+    if [[ -f "$default_objectives_jar" ]]; then
+        jars="$default_objectives_jar"
+    else
+        jars=""
+    fi
+fi
+
 uienabled=${uienabled:-false}
 app_class=${app_class:-br.ufmg.cs.systems.fractal.FractalSparkRunner}
-packages="com.koloboke:koloboke-impl-jdk8:1.0.0,com.typesafe.akka:akka-remote_2.13:2.5.23"
+
+# Read the same runtime version used by the Gradle build.
+javascript_runtime_file="$FRACTAL_HOME/conf/javascript-runtime.properties"
+
+if [[ ! -r "$javascript_runtime_file" ]]; then
+    printf 'error: Cannot read %s\n' "$javascript_runtime_file" >&2
+    exit 1
+fi
+
+graaljs_version=""
+
+while IFS='=' read -r property_name property_value || [[ -n "$property_name" ]]; do
+    if [[ "$property_name" == "graaljs.version" ]]; then
+        graaljs_version="$property_value"
+    fi
+done < "$javascript_runtime_file"
+
+if [[ ! "$graaljs_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf 'error: Invalid graaljs.version in %s\n' \
+        "$javascript_runtime_file" >&2
+    exit 1
+fi
+
+
+packages="com.koloboke:koloboke-impl-jdk8:1.0.0,com.typesafe.akka:akka-remote_2.13:2.5.23,org.graalvm.js:js:${graaljs_version}"
+
 extrajavaoptions="\"$extrajavaoptions -Dlog4j.configuration=file://$FRACTAL_HOME/conf/log4j.properties ${PROFILER_OPTIONS}\""
 args=${args:-"$labeling $inputgraph $app $total_cores $steps $log_level $steptimelimit $timelimit $induced $fsmsupp $mindensity $query $plabeling $fraction $periodicthreshold $labelsset $gfiltering $budget $seed $topk $outputdir $outputpath $configs"}
+
+# Always include the framework core, then append optional application JARs.
+submission_jars="$FRACTAL_HOME/fractal-core/build/libs/fractal-core-$version.jar"
+
+if [[ -n "$jars" ]]; then
+    submission_jars="$submission_jars,$jars"
+fi
 
 cmd="$SPARK_HOME/bin/spark-submit --master $spark_master \\
    --deploy-mode $deploy_mode \\
@@ -736,7 +779,7 @@ cmd="$SPARK_HOME/bin/spark-submit --master $spark_master \\
    --executor-cores $worker_cores \\
    --executor-memory $worker_memory \\
    --class $app_class \\
-   --jars $FRACTAL_HOME/fractal-core/build/libs/fractal-core-$version.jar,$jars \\
+   --jars \"$submission_jars\" \\
    --packages $packages \\
    $FRACTAL_HOME/fractal-apps/build/libs/fractal-apps-$version.jar \\
    $args"

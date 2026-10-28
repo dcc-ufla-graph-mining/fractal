@@ -13,6 +13,8 @@ import br.ufmg.cs.systems.fractal.util.Logging
 import com.koloboke.collect.map.hash.HashIntIntMaps
 import com.koloboke.collect.map.{IntIntMap, IntObjCursor}
 import org.apache.spark.{SparkConf, SparkContext}
+import br.ufmg.cs.systems.fractal.optimization.objective.ObjectiveFunctionLoader
+import br.ufmg.cs.systems.fractal.optimization.objective.JavaScriptObjectiveFunction
 
 import java.util.concurrent.{Callable, Executors}
 import java.util.function.ToDoubleFunction
@@ -20,44 +22,112 @@ import java.util.function.ToDoubleFunction
 case class SubgraphAndCost(var subgraph: VertexInducedOptimizationSubgraph,
                            var cost: Double)
 
-class LocalSearchAggregation
-(objectiveFunction: SerializableToDoubleFunction[VertexInducedOptimizationSubgraph],
- timeLimitMs: Long,
- metaheuristic: MetaheuristicType,
- tabuListSize: Int)
-  extends LongObjSubgraphAggregation[VertexInducedSubgraph,SubgraphAndCost] with Logging {
+/**
+ * Typed settings used to execute one optimization application.
+ *
+ * The CLI validates these values before the application creates Spark contexts.
+ */
+final case class SubgraphOptimizationConfig(
+                                             graphPath: String,
+                                             initialVertices: Int,
+                                             initialSolutions: Int,
+                                             seed: Int,
+                                             timeLimitMs: Long,
+                                             objectiveClassName: Option[String],
+                                             objectiveFile: Option[String],
+                                             metaheuristic: String,
+                                             graphLabelType: String,
+                                             tabuListLength: Option[Int]
+                                           )
 
-  override def reduce(sc1: SubgraphAndCost,
-                      sc2: SubgraphAndCost): Unit = {
-    if (sc1.cost < sc2.cost || (sc1.cost == sc2.cost && sc1.subgraph.getNumVertices < sc2.subgraph.getNumVertices)) { // keep best in first argument
+/**
+ * Optimizes sampled subgraphs and keeps the highest-scoring result.
+ *
+ * JavaScript definitions are portable; their runtimes belong to individual
+ * optimization runs and are never shared between independent solutions.
+ */
+class LocalSearchAggregation(
+                              objectiveFunction: SerializableToDoubleFunction[VertexInducedOptimizationSubgraph],
+                              timeLimitMs: Long,
+                              metaheuristic: MetaheuristicType,
+                              tabuListSize: Int
+                            ) extends LongObjSubgraphAggregation[VertexInducedSubgraph, SubgraphAndCost]
+  with Logging {
+
+  /**
+   * Keeps the better score, preferring more vertices when scores are equal.
+   */
+  override def reduce(sc1: SubgraphAndCost, sc2: SubgraphAndCost): Unit = {
+    if (
+      sc1.cost < sc2.cost ||
+        (
+          sc1.cost == sc2.cost &&
+            sc1.subgraph.getNumVertices < sc2.subgraph.getNumVertices
+          )
+    ) {
       sc1.subgraph = sc2.subgraph
       sc1.cost = sc2.cost
     }
   }
 
-  override def aggregate_AGGREGATION_PRIMITIVE(internalSubgraph: VertexInducedSubgraph): Unit = {
-    val subgraph = new VertexInducedOptimizationSubgraph(internalSubgraph, objectiveFunction)
-    val neighborhoodStructures =
-      Array(
-        new SolutionNeighborhoodVertexAdd,
-        new SolutionNeighborhoodVertexRemove,
-        new SolutionNeighborhoodVertexSwap,
-      )
-    val executor = Executors.newSingleThreadExecutor
+  /**
+   * Creates run-local resources and releases them after optimization.
+   */
+  override def aggregate_AGGREGATION_PRIMITIVE(
+                                                internalSubgraph: VertexInducedSubgraph
+                                              ): Unit = {
+    val scriptRun = objectiveFunction match {
+      case script: JavaScriptObjectiveFunction =>
+        Some(script.openForRun())
 
-    try {
-      val optimization  = new SubgraphOptimization()
-      optimization.run(metaheuristic, subgraph, neighborhoodStructures, timeLimitMs, tabuListSize, executor);
-    } catch {
-      case e: RuntimeException =>
-        logApp(s"EXCEPTION: ${e} ${e.getStackTrace.slice(0, 5).mkString("," + "")}")
-        throw new RuntimeException(e)
-    } finally {
-      executor.shutdownNow()
+      case _ =>
+        None
     }
 
-    val subgraphAndCost = SubgraphAndCost(subgraph, subgraph.getCost)
-    map(0L, subgraphAndCost)
+    try {
+      val runObjective
+      : SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] =
+        scriptRun match {
+          case Some(script) => script
+          case None => objectiveFunction
+        }
+
+      val subgraph = new VertexInducedOptimizationSubgraph(
+        internalSubgraph,
+        runObjective
+      )
+
+      val neighborhoodStructures = Array(
+        new SolutionNeighborhoodVertexAdd,
+        new SolutionNeighborhoodVertexRemove,
+        new SolutionNeighborhoodVertexSwap
+      )
+
+      val executor = Executors.newSingleThreadExecutor()
+
+      try {
+        val optimization = new SubgraphOptimization()
+
+        optimization.run(
+          metaheuristic,
+          subgraph,
+          neighborhoodStructures,
+          timeLimitMs,
+          tabuListSize,
+          executor
+        )
+      } finally {
+        executor.shutdownNow()
+      }
+
+      // Cancel any remaining guest execution before publishing the result.
+      scriptRun.foreach(_.close())
+
+      map(0L, SubgraphAndCost(subgraph, subgraph.getCost))
+    } finally {
+      // Cleanup also covers preparation, evaluation, and aggregation failures.
+      scriptRun.foreach(_.close())
+    }
   }
 }
 
@@ -217,94 +287,157 @@ class LabelEntropy extends SerializableToDoubleFunction[VertexInducedOptimizatio
   }
 }
 
+/**
+ * Loads a user objective and coordinates optimization through Spark and Fractal.
+ */
 object SubgraphOptimizationApp extends Logging {
+
+  /**
+   * Validates settings and the objective before creating application contexts.
+   */
   def main(args: Array[String]): Unit = {
-    // environment setup (Spark)
-    val conf = new SparkConf().setAppName("LocalSearchApp")
-    val sc = new SparkContext(conf)
+    val config = SubgraphOptimizationCli.parse(args) match {
+      case SubgraphOptimizationCli.Success(value) =>
+        value
 
-    // environment setup (Spark)
-    val fc = new FractalContext(sc)
+      case SubgraphOptimizationCli.Help =>
+        Console.out.println(SubgraphOptimizationCli.help)
+        return
 
-    val graphPath = args(0) // input graph
-    val numVertices = args(1).toInt // number of vertices in the subgraphs
-    val numSamples = args(2).toInt // target number of initial solutions via random walk (no guarantee to be exactly that)
-    val seed = args(3).toInt // -1 means: start with a random seed
-    val timeLimitMs = args(4).toLong
-    val objectiveFunction = args(5) match {
-      case "densitymass" => DensityMass
-      case "conductance" => Conductance
-      case "modularity" => Modularity
-      case "densesubgraph" => DenseSubgraph
-      case "triangledensestsubgraph" => TriangleDensestSubgraph
-      case "degreeentropy" => new DegreeEntropy
-      case "labelentropy" => new LabelEntropy
-      case _ =>
-        throw new RuntimeException(s"Invalid objective function: ${args(5)}")
+      case SubgraphOptimizationCli.Failure(message) =>
+        Console.err.println(s"Error: $message")
+        Console.err.println("Use --help to see available options.")
+        System.exit(2)
+        return
     }
-    val metaheuristic = args(6) match {
+
+    val objectiveFunction
+    : SerializableToDoubleFunction[VertexInducedOptimizationSubgraph] =
+      try {
+        config.objectiveClassName match {
+          case Some(className) =>
+            ObjectiveFunctionLoader.load(className)
+
+          case None =>
+            JavaScriptObjectiveFunction.fromFile(
+              config.objectiveFile.getOrElse {
+                throw new IllegalArgumentException(
+                  "A JavaScript objective file was not supplied."
+                )
+              }
+            )
+        }
+      } catch {
+        case e: IllegalArgumentException =>
+          Console.err.println(s"Error: ${e.getMessage}")
+
+          if (e.getCause != null) {
+            e.getCause.printStackTrace(Console.err)
+          }
+
+          System.exit(2)
+          return
+      }
+
+    val objectiveDescription =
+      config.objectiveClassName
+        .map(name => s"java:$name")
+        .getOrElse(s"javascript:${config.objectiveFile.get}")
+
+    val metaheuristic = config.metaheuristic match {
       case "vns" => VNS
       case "ils" => ILS
       case "ts" => TS
-      case _ =>
-        throw  new RuntimeException(s"Invalid metaheuristic: ${args(6)}")
+      case other =>
+        throw new IllegalStateException(
+          s"Unsupported validated metaheuristic: $other"
+        )
     }
 
-    if((metaheuristic == MetaheuristicType.VNS || metaheuristic == MetaheuristicType.ILS) && args.length != 8) {
-      throw new RuntimeException(s"Invalid command! Check the parameters.")
-    } else if(metaheuristic == MetaheuristicType.TS && args.length != 9) {
-      throw new RuntimeException(s"Invalid command! Check the parameters.")
+    val conf = new SparkConf().setAppName("SubgraphOptimizationApp")
+    val sc = new SparkContext(conf)
+
+    try {
+      val fc = new FractalContext(sc)
+
+      try {
+        val fgraph = config.graphLabelType match {
+          case "unlabeled" =>
+            fc.unlabeledGraphFromAdjLists(config.graphPath)
+              .set("ws_external", false)
+
+          case "vertexlabeled" =>
+            fc.vertexLabeledGraphFromAdjLists(config.graphPath)
+              .set("ws_external", false)
+
+          case "vertexedgelabeled" =>
+            fc.vertexEdgeLabeledGraphFromAdjLists(config.graphPath)
+              .set("ws_external", false)
+
+          case other =>
+            throw new IllegalStateException(
+              s"Unsupported validated graph label type: $other"
+            )
+        }
+
+        // Exclude graph materialization from the optimization elapsed time.
+        fgraph.vfractoid.extend(1).aggregationCount
+
+        val startTimeMs = System.currentTimeMillis()
+
+        val numThreads =
+          Math.min(fgraph.numPartitions, config.initialSolutions)
+
+        val samplesPerThread =
+          Math.max(config.initialSolutions / numThreads, 1)
+
+        val subgraphs = fgraph
+          .set("samples_per_thread", samplesPerThread)
+          .set("random_walk_seed", config.seed)
+          .set("num_partitions", numThreads)
+          .vfractoid
+          .extend(
+            config.initialVertices,
+            classOf[RandomWalkEnumerator[VertexInducedSubgraph]]
+          )
+
+        val aggregation = new LocalSearchAggregation(
+          objectiveFunction,
+          config.timeLimitMs,
+          metaheuristic,
+          config.tabuListLength.getOrElse(-1)
+        )
+
+        val results = subgraphs
+          .aggregationLongObj(aggregation)
+          .reduceByKey((sc1, sc2) => {
+            aggregation.reduce(sc1, sc2)
+            sc1
+          })
+          .values
+          .collect()
+
+        // Give a meaningful error when sampling produces no initial solutions.
+        if (results.isEmpty) {
+          throw new IllegalStateException(
+            "No initial solutions were generated. " +
+              "Check the graph and initial solution settings."
+          )
+        }
+
+        val bestSubgraph = results.head
+        val elapsedTimeMs = System.currentTimeMillis() - startTimeMs
+
+        logApp(
+          s"Objective=$objectiveDescription " +
+            s"ElapsedTimeMs=$elapsedTimeMs " +
+            s"BestSubgraph=${bestSubgraph.subgraph.toDetailedString}"
+        )
+      } finally {
+        fc.stop()
+      }
+    } finally {
+      sc.stop()
     }
-
-    val graphLabelType = args(7).toLowerCase
-    val fgraph = graphLabelType match{
-      case "unlabeled" =>
-        fc.unlabeledGraphFromAdjLists(graphPath).set("ws_external", false)
-      case "vertexlabeled" =>
-        fc.vertexLabeledGraphFromAdjLists(graphPath).set("ws_external", false)
-      case "vertexedgelabeled" =>
-        fc.vertexEdgeLabeledGraphFromAdjLists(graphPath).set("ws_external", false)
-      case _ =>
-        throw new RuntimeException(s"Invalid graph label type: ${graphLabelType}. Use: unlabeled|vertexlabeled|vertexedgelabeled")
-    }
-
-    val tabuListSize =
-      if(args.length == 9 && args(8).nonEmpty)
-        args(8).toInt
-      else
-        -1
-
-    // materialize input graph
-    fgraph.vfractoid.extend(1).aggregationCount
-
-    val startTimeMs = System.currentTimeMillis()
-
-    val numThreads = Math.min(fgraph.numPartitions, numSamples)
-    val samplesPerThread = Math.max(numSamples / numThreads, 1)
-    val subgraphs = fgraph
-      .set("samples_per_thread", samplesPerThread)
-      .set("random_walk_seed", seed)
-      .set("num_partitions", numThreads)
-      .vfractoid
-      .extend(numVertices,
-        classOf[RandomWalkEnumerator[VertexInducedSubgraph]])
-
-
-    val aggregation = new LocalSearchAggregation(objectiveFunction, timeLimitMs, metaheuristic, tabuListSize)
-
-    val bestSubgraph = subgraphs.aggregationLongObj(aggregation)
-      .reduceByKey((sc1, sc2) => {aggregation.reduce(sc1, sc2); sc1})
-      .values
-      .collect().head
-
-    val elapsedTimeMs = System.currentTimeMillis() - startTimeMs
-
-    logApp(f"ElapsedTimeMs=${elapsedTimeMs} BestSubgraph=${bestSubgraph.subgraph.toDetailedString}")
-
-    // environment cleaning
-    fc.stop()
-    sc.stop()
-
-    System.exit(0)
   }
 }

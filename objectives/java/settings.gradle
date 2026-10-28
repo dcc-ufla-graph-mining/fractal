@@ -1,0 +1,4 @@
+/*
+ * Keeps objective compilation independent of the framework's task graph.
+ */
+rootProject.name = 'fractal-java-objectives'
