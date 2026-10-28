@@ -66,7 +66,8 @@ public final class OptimizationUtils {
         IntIntMap low, disc;
 
         // Initializing auxiliary structures
-        low = disc = HashIntIntMaps.newMutableMap();
+        low = HashIntIntMaps.newMutableMap();
+        disc = HashIntIntMaps.newMutableMap();
         int[] timeTarjan = {0};
 
         // Executing recursive Tarjan

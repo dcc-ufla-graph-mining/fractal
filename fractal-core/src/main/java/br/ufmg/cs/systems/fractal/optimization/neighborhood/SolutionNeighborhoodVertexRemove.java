@@ -27,6 +27,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
       // Get the non-articulation vertices
       if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+         subgraph.setUpdateString("=");
          return false;
       }
 
@@ -60,6 +61,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
       // Get the non-articulation vertices
       if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+         subgraph.setUpdateString("/=");
          return;
       }
 
@@ -96,7 +98,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
       int bestVertex = -1;
       int currentVertex;
       double initialCost = subgraph.getCost();
-      double bestNeighborhoodCost = 0;
+      double bestNeighborhoodCost = Double.NEGATIVE_INFINITY;;
       double currentCost;
       boolean vertexAccepted;
       boolean improvement = false;
@@ -105,6 +107,7 @@ public class SolutionNeighborhoodVertexRemove implements SolutionNeighborhood {
 
       // Get the non-articulation vertices
       if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+         subgraph.setUpdateString("=");
          return false;
       }
 

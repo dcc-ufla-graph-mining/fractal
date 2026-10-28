@@ -32,6 +32,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
         // Get the keys of the vertices in the subgraph
         if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
+            subgraph.setUpdateString("=");
             return false;
         }
 
@@ -60,6 +61,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
                 }
             }
         }
+        subgraph.setUpdateString("=");
         return false;
     }
 
@@ -72,8 +74,10 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         adjLists = subgraph.getAdjLists();
 
         // Get the keys of the vertices in the subgraph
-        if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists))
+        if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
+            subgraph.setUpdateString("/=");
             return;
+        }
 
         int count = 0;      // Variable to count the number of attempts to insert a random vertex to prevent loops
         int maxIterations = 1000;   // Max number of random vertices to generate
@@ -113,6 +117,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
             // Get all the neighbors of the subgraph vertices that it is not already in the subgraph
             IntSet neighborsNotInSubgraph = HashIntSets.newMutableSet();
             if(!OptimizationUtils.getSubgraphNeighbors(subgraph, adjLists, neighborsNotInSubgraph, subgraphVertices, vertexNeighborhood)) {
+                subgraph.setUpdateString("/=");
                 return;
             }
 
@@ -147,7 +152,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
         int bestVertex = -1;
         int currentVertex;
         double initialCost = subgraph.getCost();
-        double bestNeighborhoodCost = 0;
+        double bestNeighborhoodCost = Double.NEGATIVE_INFINITY;
         double currentCost;
         boolean vertexAccepted;
         boolean improvement = false;
@@ -156,6 +161,7 @@ public class SolutionNeighborhoodVertexAdd implements SolutionNeighborhood {
 
         // Get the keys of the vertices in the subgraph
         if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
+            subgraph.setUpdateString("=");
             return false;
         }
 

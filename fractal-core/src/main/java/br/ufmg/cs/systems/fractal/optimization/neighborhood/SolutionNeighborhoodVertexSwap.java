@@ -31,10 +31,12 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
 
         // Get the subgraph vertices
         if(!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
+            subgraph.setUpdateString("=");
             return false; // No valid subgraph to improve
         }
         // Get the non-articulation vertices
         if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+            subgraph.setUpdateString("=");
             return false; // No removable vertices
         }
 
@@ -87,6 +89,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
             }
             subgraph.addAndSetCost(vertexToRemove, initialCost);  // Rollback the vertex removal
         }
+        subgraph.setUpdateString("=");
         return false;
     }
 
@@ -95,12 +98,15 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
         adjLists = subgraph.getAdjLists();
 
         // Get the subgraph vertices
-        if(!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists))
+        if (!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
+            subgraph.setUpdateString("/=");
             return;
+        }
         // Get the non-articulation vertices
-        if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists))
+        if (!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+            subgraph.setUpdateString("/=");
             return;
-
+        }
         // Get a random vertex to be removed
         int numNonArticulation = nonArticulationVertices.size();
         int randomVertexToRemoveIndex = OptimizationUtils.getRandomInt(numNonArticulation);
@@ -158,6 +164,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
             // Get all the neighbors of the subgraph vertices that it is not already in the subgraph
             IntSet neighborsNotInSubgraph = HashIntSets.newMutableSet();
             if(!OptimizationUtils.getSubgraphNeighbors(subgraph, adjLists, neighborsNotInSubgraph, subgraphVertices, vertexNeighborhood)) {
+                subgraph.setUpdateString("/=");
                 return;
             }
 
@@ -189,12 +196,13 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
      */
     @Override
     public boolean tabuImproving(VertexInducedOptimizationSubgraph subgraph, TabuList tabuList, double bestCost) {
+        final double initialCost = subgraph.getCost();
+        double bestNeighborhoodCost = Double.NEGATIVE_INFINITY;
+
         int bestVertexToAdd = -1;
         int bestVertexToRemove = -1;
         int currentVertexToAdd;
         int currentVertexToRemove;
-        double initialCost = subgraph.getCost();
-        double bestNeighborhoodCost = 0;
         double currentCost;
         boolean swapAccepted;
         boolean improvement = false;
@@ -203,10 +211,14 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
 
         // Get the subgraph vertices
         if(!OptimizationUtils.getSubgraphVertices(subgraphVertices, adjLists)) {
+            tabuList.removeOldest();
+            subgraph.setUpdateString("=");
             return false; // No valid subgraph to improve
         }
         // Get the non-articulation vertices
         if(!OptimizationUtils.getNonArticulationVertices(nonArticulationVertices, adjLists)) {
+            tabuList.removeOldest();
+            subgraph.setUpdateString("=");
             return false; // No removable vertices
         }
 
@@ -253,7 +265,7 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
                             i = neighborhoodSize;
                         } else {
                             // Checks if one of the swaped vertices are tabu
-                            if(tabuList.contains(currentVertexToRemove) || tabuList.contains(currentVertexToAdd)) {
+                            if(!tabuList.contains(currentVertexToRemove) || !tabuList.contains(currentVertexToAdd)) {
                                 // Accepts the swap if it increases the best cost found in the neighborhood
                                 if (currentCost > bestNeighborhoodCost) {
                                     swapAccepted = true;
@@ -284,8 +296,8 @@ public class SolutionNeighborhoodVertexSwap implements SolutionNeighborhood {
         if(bestVertexToRemove >= 0 &&  bestVertexToAdd >= 0) {
             if(!improvement) {
                 // Swaps best vertices
-                subgraph.removeAndSetCost(bestVertexToRemove, bestCost);
-                subgraph.addAndSetCost(bestVertexToAdd, bestCost);
+                subgraph.removeAndSetCost(bestVertexToRemove, bestNeighborhoodCost);
+                subgraph.addAndSetCost(bestVertexToAdd, bestNeighborhoodCost);
             }
 
             // Insert the swaped vertices into the tabu list
