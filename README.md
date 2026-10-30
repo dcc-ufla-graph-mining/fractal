@@ -1,9 +1,9 @@
-# Fractal GM-Opt
+# Fractal CSOpt
 
-A framework for subgraph optimization using neighborhood-search metaheuristics
+A framework for connected subgraph optimization using neighborhood-search metaheuristics
 and user-defined objective functions.
 
-Fractal GM-Opt searches for high-scoring vertex-induced subgraphs. Users express
+Fractal CSOpt searches for high-scoring vertex-induced subgraphs. Users express
 their optimization problem through an objective function, while the framework
 coordinates initial solution generation, neighborhood exploration, and parallel
 execution.
