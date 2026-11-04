@@ -1,0 +1,50 @@
+name: Deploy landing page
+
+on:
+  push:
+    branches:
+      - fractal-csopt
+    paths:
+      - "landing-page/**"
+      - ".github/workflows/deploy-landing-page.yml"
+
+permissions:
+  contents: read
+
+# Serialize deployments to the repository's Pages site.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Publish only from the official repository.
+    if: github.repository == 'dcc-ufla-graph-mining/fractal'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      # Publish the directory contents with index.html at the site root.
+      - name: Upload landing page
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: landing-page
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
