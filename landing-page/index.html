@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Fractal GM-Opt — Subgraph Optimization</title>
+    <title>Fractal CSOpt — Subgraph Optimization</title>
     <meta
             name="description"
             content="A framework for subgraph optimization using user-defined objective functions and extensible neighborhood-search strategies. Built on Fractal and Apache Spark."
@@ -17,12 +17,12 @@
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
 
-<!-- Navigation stays visible and usable without JavaScript. -->
+<!-- Navigation uses standard links and section anchors. -->
 <header class="site-header">
     <div class="container header-inner">
-        <a class="brand" href="#top" aria-label="Fractal GM-Opt home">
+        <a class="brand" href="#top" aria-label="Fractal CSOpt home">
             <span class="brand-mark" aria-hidden="true">F</span>
-            <span>Fractal <strong>GM-Opt</strong></span>
+            <span>Fractal <strong>CSOpt</strong></span>
         </a>
 
         <nav class="main-nav" aria-label="Main navigation">
@@ -30,10 +30,10 @@
             <a href="#research">Research</a>
             <a href="#development">In development</a>
             <a
-                    href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/docs/README.md"
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-csopt/docs/README.md"
             >Documentation</a>
             <a
-                    href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-gm-opt"
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-csopt"
             >GitHub <span aria-hidden="true">↗</span></a>
         </nav>
     </div>
@@ -46,9 +46,9 @@
             <div class="hero-content">
                 <span class="status-label">Under active development</span>
 
-                <p class="eyebrow">Fractal GM-Opt</p>
+                <p class="eyebrow">Fractal CSOpt</p>
                 <h1 id="hero-title">
-                    A General Purpose Subgraph Optimization Framework.
+                    A General Purpose Framework for Connected Subgraph Optimization.
                 </h1>
 
                 <p class="hero-description">
@@ -60,12 +60,12 @@
                 <div class="actions">
                     <a
                             class="button button-primary"
-                            href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/README.md"
+                            href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-csopt/README.md"
                     >Get started <span aria-hidden="true">→</span></a>
 
                     <a
                             class="button button-secondary"
-                            href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-gm-opt"
+                            href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-csopt"
                     >Explore the code</a>
                 </div>
             </div>
@@ -116,11 +116,10 @@
             <div class="feature-grid">
                 <article class="feature">
                     <span class="feature-number" aria-hidden="true">01</span>
-                    <h3>Define your objective function</h3>
+                    <h3>Define the objective function</h3>
                     <p>
                         Score vertex-induced subgraphs using candidate and underlying-graph
-                        information. Supply your implementation as a Java class or a
-                        JavaScript file.
+                        information. Supply your implementation as a Java class.
                     </p>
                 </article>
 
@@ -162,20 +161,20 @@
         <div class="container example-grid">
             <div>
                 <p class="eyebrow">Express your problem</p>
-                <h2 id="objective-title">Start with a scoring function.</h2>
+                <h2 id="objective-title">Implement a scoring function.</h2>
                 <p>
                     This example scores a subgraph by its number of edges divided by
                     its number of vertices. Larger scores are preferred.
                 </p>
                 <p>
-                    Replace the calculation with your own objective function.
-                    Java and JavaScript implementations use the same candidate
-                    representation.
+                    Replace the calculation with your own objective function,
+                    implemented as a Java class. Compile it separately and
+                    supply its class name when launching the search.
                 </p>
 
                 <a
                         class="text-link"
-                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/docs/objective-functions.md"
+                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-csopt/docs/objective-functions.md"
                 >Learn to implement an objective function
                     <span aria-hidden="true">→</span>
                 </a>
@@ -183,19 +182,27 @@
 
             <div class="code-panel">
                 <div class="code-heading">
-                    <span>density.js</span>
-                    <span>JavaScript example</span>
+                    <span>DensityObjective.java</span>
+                    <span>Java method excerpt</span>
                 </div>
-                <pre tabindex="0" aria-label="JavaScript density objective function"><code>// Return edges per vertex without modifying the candidate.
-function evaluate(subgraph) {
-    var vertices = subgraph.getNumVertices();
+                <pre tabindex="0" aria-label="Java density objective function method"><code>/**
+                     * Returns edges per vertex without modifying the candidate.
+                     *
+                     * @param subgraph candidate supplied by the framework
+                     * @return edges per vertex, or zero for an empty candidate
+                     */
+                    @Override
+                    public double applyAsDouble(
+                            VertexInducedOptimizationSubgraph subgraph) {
+                        int vertices = subgraph.getNumVertices();
 
-    if (vertices === 0) {
-        return 0.0;
-    }
+                        if (vertices == 0) {
+                            return 0.0;
+                        }
 
-    return subgraph.getNumEdges() / vertices;
-}</code></pre>
+                        return subgraph.getNumEdges() / (double) vertices;
+                    }
+                </code></pre>
             </div>
         </div>
     </section>
@@ -214,7 +221,7 @@ function evaluate(subgraph) {
             <div class="guide-grid">
                 <a
                         class="guide-card"
-                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/README.md"
+                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-csopt/README.md"
                 >
                     <span class="eyebrow">Start here</span>
                     <h3>Install and run <span aria-hidden="true">↗</span></h3>
@@ -223,7 +230,7 @@ function evaluate(subgraph) {
 
                 <a
                         class="guide-card"
-                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/docs/README.md"
+                        href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-csopt/docs/README.md"
                 >
                     <span class="eyebrow">Go further</span>
                     <h3>Understand and extend <span aria-hidden="true">↗</span></h3>
@@ -340,7 +347,7 @@ function evaluate(subgraph) {
                 <h2 id="foundations-title">Built on Fractal and Apache Spark.</h2>
                 <p>
                     Fractal supplies graph-processing infrastructure on Spark.
-                    Fractal GM-Opt adds the subgraph optimization workflow.
+                    Fractal CSOpt adds the subgraph optimization workflow.
                 </p>
             </div>
 
@@ -358,14 +365,14 @@ function evaluate(subgraph) {
 
 <footer class="site-footer">
     <div class="container footer-inner">
-        <p><strong>Fractal GM-Opt</strong> · Under active development</p>
+        <p><strong>Fractal CSOpt</strong> · Under active development</p>
 
         <nav aria-label="Footer navigation">
             <a
-                    href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-gm-opt"
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-csopt"
             >Source code</a>
             <a
-                    href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-gm-opt/LICENSE"
+                    href="https://github.com/dcc-ufla-graph-mining/fractal/blob/fractal-csopt/LICENSE"
             >Apache License 2.0</a>
         </nav>
     </div>
