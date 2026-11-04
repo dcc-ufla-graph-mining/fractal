@@ -283,7 +283,6 @@ each strategy and objective function.
 | Vertex count, edge count, and score | Copied without reevaluation |
 | Underlying graph | Same graph reference |
 | Ordinary Java objective function | Copied through serialization |
-| Objective implementing `ObjectiveCopyStrategy` | Delegated to its copy policy |
 | Reusable views | Not copied from the source |
 | Update marker | Not copied |
 | Finished flag | Not copied |
@@ -294,14 +293,6 @@ supported: clearing the destination adjacency map would also clear the source.
 The source must already have a valid objective evaluator. A result restored
 from external serialization is not automatically suitable as a source for
 resuming optimization.
-
-### JavaScript evaluator ownership
-
-A JavaScript objective function can share its evaluator between candidate copies
-within one optimization run. That avoids constructing a runtime for each copy.
-
-The run owns and closes the runtime. A candidate receiving the shared evaluator
-does not acquire independent ownership.
 
 ### Finished destinations
 
@@ -330,7 +321,6 @@ It does not serialize:
 
 - The underlying graph reference.
 - The objective evaluator.
-- JavaScript runtime resources.
 - The update marker.
 - The finished state.
 

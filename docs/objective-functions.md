@@ -7,8 +7,7 @@ The framework searches for candidates with larger scores. The same search
 infrastructure can therefore address different problems by changing the
 objective function.
 
-Users can provide an objective function as a Java implementation or a JavaScript
-file. These are alternative implementation formats for the same scoring role.
+Users can provide an objective function as a Java implementation.
 
 For installation and general execution instructions, see the
 [project README](../README.md). For candidate data structures and access methods,
@@ -29,9 +28,8 @@ An implementation must:
 
 Negative scores and zero are valid scores under this contract.
 
-The JavaScript adapter validates that the result is numeric, representable as
-a double, and finite. The current Java evaluation path expects the same contract
-but does not enforce an equivalent finite-score check.
+The current Java evaluation path expects finite scores but does not
+automatically enforce a finite-score check.
 
 ### 1.1 Maximization and minimization
 
@@ -82,8 +80,6 @@ Do not return `NaN` or infinity to represent an invalid candidate.
 Scores must describe the candidate, not the history of evaluations.
 
 A Java implementation may reuse scratch collections if they are reset correctly.
-A JavaScript function may use helper functions and constants, but mutable global
-state must not change the score assigned to the same candidate.
 
 Do not assume an objective instance is unique throughout an application.
 Serialization, task retries, and independent optimization runs can create
@@ -91,8 +87,7 @@ additional instances.
 
 ## 2. Accessing candidate information
 
-The same Java object supplies candidate information to both implementation
-formats.
+The candidate object supplies the following information:
 
 | Information | Access |
 |---|---|
@@ -122,114 +117,9 @@ is being evaluated. Compute the score from candidate and graph information.
 Label-dependent objective functions require a compatible graph-label mode.
 The framework does not infer those requirements from the implementation.
 
-## 3. Implementing an objective function in JavaScript
+## 3. Implementing an objective function in Java
 
-### 3.1 Entry point
-
-Provide a UTF-8 source file defining:
-
-```javascript
-function evaluate(subgraph)
-```
-
-The function must execute synchronously and return a finite number.
-
-This is embedded JavaScript execution through GraalJS. It is not a Node.js
-program: Node.js modules and APIs are not available.
-
-The current loader supplies the source as a regular script. Use a global
-function declaration rather than a module export.
-
-### 3.2 Density example
-
-The bundled example is:
-
-`objectives/javascript/density.js`
-
-```javascript
-/**
- * Scores a candidate by its number of edges divided by its vertex count.
- *
- * @param {Object} subgraph Candidate exposed through Java interoperability.
- * @returns {number} Edges per vertex, or zero for an empty candidate.
- */
-function evaluate(subgraph) {
-    var vertices = subgraph.getNumVertices();
-
-    if (vertices === 0) {
-        return 0.0;
-    }
-
-    return subgraph.getNumEdges() / vertices;
-}
-```
-
-This function implements:
-
-`score(S) = |E(S)| / |V(S)|`
-
-Its empty-candidate convention is zero.
-
-It uses cached vertex and edge counts, so the evaluation performs constant work
-with respect to candidate size, apart from runtime invocation overhead.
-
-This score is not the fraction of possible edges present in the candidate.
-That alternative density definition uses a different normalization.
-
-### 3.3 Run the function
-
-After building the framework, run from the repository root:
-
-```bash
-master_memory=4g \
-worker_cores=4 \
-app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp \
-args="--graph data/citeseer/ --iv 10 --is 20 --tl 1000 --objective-file objectives/javascript/density.js --mh vns" \
-./bin/fractal-custom-app.sh
-```
-
-`--objective-javascript` is an alias for `--objective-file`.
-
-Changing the script requires no framework compilation. Save the file and start
-another application execution.
-
-### 3.4 Loading and runtime behavior
-
-The driver reads the source file once into a serializable definition.
-The original file path does not need to exist on each worker.
-
-Each initial solution opens an independent JavaScript runtime, evaluates the
-script, and resolves `evaluate`.
-
-The runtime is reused for candidate evaluations and candidate copies within
-that optimization run. It is closed when the run releases its resources.
-
-Consequently:
-
-- Top-level script statements execute once per opened runtime, not once per
-  complete application.
-- Scripts should contain declarations and inexpensive initialization.
-- Candidate copies within a run must not be assumed to have independent script
-  global state.
-- A script file change does not update an application already running.
-
-### 3.5 Invalid results
-
-The adapter rejects:
-
-- Strings, even when they contain digits.
-- Boolean values.
-- `null` or an omitted return value.
-- Promises and other nonnumeric objects.
-- `NaN`.
-- Positive or negative infinity.
-- Numeric results that cannot be represented as a double by the adapter.
-
-Return a number directly. Do not rely on implicit conversion by the framework.
-
-## 4. Implementing an objective function in Java
-
-### 4.1 Required interface
+### 3.1 Required interface
 
 Implement:
 
@@ -249,7 +139,7 @@ double applyAsDouble(VertexInducedOptimizationSubgraph subgraph)
 The implementation must be a public, concrete class with a public no-argument
 constructor.
 
-### 4.2 Density example
+### 3.2 Density example
 
 The bundled Java example is:
 
@@ -299,10 +189,7 @@ public final class DensityObjective
 
 The package declaration makes its class name `user.DensityObjective`.
 
-The Java and JavaScript examples calculate the same mathematical score and use
-the same empty-candidate convention.
-
-### 4.3 Compile separately
+### 3.3 Compile separately
 
 From the repository root, prepare the framework compilation context:
 
@@ -330,7 +217,7 @@ The objective compilation environment checks the recorded Gradle version and
 JDK major version. Refresh the context when its framework APIs or dependencies
 change, or after deleting the framework build directory.
 
-### 4.4 Run the function
+### 3.4 Run the function
 
 ```bash
 master_memory=4g \
@@ -352,7 +239,7 @@ driver and workers.
 The class option accepts a fully qualified class name, not a `.java` filename,
 a `.class` path, or a JAR path.
 
-### 4.5 Serialization and state
+### 3.5 Serialization and state
 
 The driver creates the objective instance and checks that its initial state can
 be copied through serialization.
@@ -371,11 +258,7 @@ reinitialization in a serializable class.
 Static mutable state is not isolated through objective serialization and can be
 shared by executions within the same JVM.
 
-Users implementing ordinary scoring functions do not need to implement
-`ObjectiveCopyStrategy`. That interface supports internal evaluators requiring
-special resource-copy behavior.
-
-### 4.6 Rebuild after an edit
+### 3.6 Rebuild after an edit
 
 After changing Java objective source:
 
@@ -391,27 +274,7 @@ Do not package framework or Spark classes inside the objective JAR.
 Additional custom dependencies require explicit compilation and runtime
 configuration; they are not automatically bundled by the objective build.
 
-## 5. Selecting an implementation format
-
-| Aspect | Java | JavaScript |
-|---|---|---|
-| Entry point | `applyAsDouble(subgraph)` | `evaluate(subgraph)` |
-| Preparation after a source edit | Compile and package the objective | Save the script |
-| Runtime selection | `--objective-class` | `--objective-file` |
-| Execution | Java interface invocation | Adapter invocation through GraalJS |
-| Copying | Serialization for ordinary implementations | Shared evaluator within one run |
-| Runtime setup | Java construction and serialization | Context creation and script preparation |
-
-Both formats support user-defined scoring without changing framework source.
-
-The JavaScript adapter introduces runtime and interoperability overhead.
-Its performance must be measured for the actual objective function and workload;
-equivalent score definitions do not imply equivalent execution speed.
-
-The CLI requires exactly one implementation input. Supplying both objective
-options is rejected, including when aliases are used.
-
-## 6. Evaluation lifecycle and limits
+## 4. Evaluation lifecycle and limits
 
 An objective function is evaluated:
 
@@ -428,19 +291,16 @@ evaluations terminate.
 Objective exceptions propagate as execution failures. The framework does not
 automatically replace failed evaluations with a penalty score.
 
-Neither implementation format provides process isolation. JavaScript exposes
-the supplied Java object with host access; disabling class-name lookup does
-not make the candidate immutable or establish a sandbox.
+Objective functions execute within the JVM without process isolation.
 
-## 7. Existing examples and earlier objective implementations
+## 5. Existing examples and earlier objective implementations
 
-The external density examples provide the starting point for new objective
+The external density example provides the starting point for new objective
 functions:
 
 | Example | Location | Score |
 |---|---|---|
 | Java density | `objectives/java/src/user/DensityObjective.java` | Edges per vertex |
-| JavaScript density | `objectives/javascript/density.js` | Edges per vertex |
 
 Earlier objective implementations also remain declared in
 `SubgraphOptimizationApp.scala`:
@@ -471,7 +331,7 @@ The current conductance-related implementation returns
 single-vertex candidates. Do not assume it implements another conductance
 definition without checking the denominator and boundary behavior.
 
-## 8. Validation checklist
+## 6. Validation checklist
 
 Before using a new objective function:
 
@@ -495,11 +355,7 @@ For the density example:
 | 3 | 3 | 1.0 |
 | 4 | 6 | 1.5 |
 
-When comparing Java and JavaScript, evaluate the same candidate to compare
-scores. A time-limited stochastic optimization run may return different
-candidates because execution speeds and explored trajectories differ.
-
-## 9. Troubleshooting
+## 7. Troubleshooting
 
 | Symptom | Check |
 |---|---|
@@ -508,9 +364,6 @@ candidates because execution speeds and explored trajectories differ.
 | Serialization failure | Instance fields, helper objects, and state retained after evaluation |
 | Objective context missing during Java compilation | Run `:fractal-core:prepareObjectiveContext` |
 | Java source was not compiled | File location under `objectives/java/src/` and JAR contents |
-| Script file cannot be read | Driver working directory, path, and permissions |
-| Script preparation fails | JavaScript syntax and global `evaluate` function |
-| Script result is rejected | Return a finite number directly |
 | Label access fails | Graph-label mode and input label files |
 | Reported score is inconsistent | Formula, numeric conversions, mutation, retained state, and cached-score use |
 | Execution exceeds the expected time | Timeout scope, initialization work, and blocking evaluations |

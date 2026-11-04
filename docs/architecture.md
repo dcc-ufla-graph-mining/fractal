@@ -31,7 +31,7 @@ components.
 
 | Component | Responsibility | Current application configuration |
 |---|---|---|
-| Objective function | Assign a score to a candidate subgraph | User-supplied Java implementation or JavaScript function |
+| Objective function | Assign a score to a candidate subgraph | User-supplied Java implementation |
 | Initial solution generation | Produce starting candidates | `RandomWalkEnumerator` |
 | Neighborhood structures | Define candidate transformations and search operations | Vertex addition, removal, and swapping |
 | Metaheuristic | Coordinate exploration using the configured neighborhoods | VNS, ILS, or TS |
@@ -60,8 +60,6 @@ generation are configured in the application code.
 | `SubgraphOptimizationMetaheuristic` | Define the metaheuristic execution interface |
 | `SolutionNeighborhood` | Define local improvement, perturbation, and tabu-search operations |
 | `ObjectiveFunctionLoader` | Load and validate a Java objective function implementation |
-| `JavaScriptObjectiveFunction` | Adapt a JavaScript function to the scoring interface |
-| `ObjectiveCopyStrategy` | Allow resource-backed objective functions to control candidate-copy behavior |
 
 `SubgraphOptimizationConfig`, `SubgraphAndCost`, and `LocalSearchAggregation`
 are currently declared in `SubgraphOptimizationApp.scala`.
@@ -96,20 +94,10 @@ resources.
 The application parses and validates arguments before creating its Spark
 context.
 
-Exactly one objective function input is required:
-
-- A Java class name.
-- A JavaScript source file path.
-
-For Java, the driver loads the class, constructs an instance, and checks that
-its initial state can be copied through serialization. The implementation
-and its dependencies must be available through Spark's application classpath.
-
-For JavaScript, the driver reads the file into a serializable source
-definition. Script evaluation and entry-point validation occur when a
-worker opens a runtime for an initial solution.
-
-Reading a script successfully does not establish that the script is valid.
+The user supplies a Java objective function class name. The driver loads the
+class, constructs an instance, and checks that its initial state can be copied
+through serialization. The implementation and its dependencies must be
+available through Spark's application classpath.
 
 ### 4.2 Load and materialize the graph
 
@@ -144,13 +132,12 @@ threads or physical CPU cores.
 
 For each sampled `VertexInducedSubgraph`, `LocalSearchAggregation`:
 
-1. Opens a run-specific JavaScript evaluator when applicable.
-2. Constructs a `VertexInducedOptimizationSubgraph`.
-3. Evaluates the initial candidate.
-4. Creates the configured neighborhood structures.
-5. Creates a single-thread executor for the metaheuristic.
-6. Invokes `SubgraphOptimization.run`.
-7. Releases execution resources and submits the result for aggregation.
+1. Constructs a `VertexInducedOptimizationSubgraph`.
+2. Evaluates the initial candidate.
+3. Creates the configured neighborhood structures.
+4. Creates a single-thread executor for the metaheuristic.
+5. Invokes `SubgraphOptimization.run`.
+6. Releases execution resources and submits the result for aggregation.
 
 Each initial solution defines a separate optimization run.
 
@@ -206,12 +193,11 @@ It does not independently reevaluate or verify their scores.
 
 ## 6. Objective function execution and copying
 
-Both objective formats are exposed to optimization code through:
+Objective functions implement:
 
 `SerializableToDoubleFunction<VertexInducedOptimizationSubgraph>`
 
-Score evaluation invokes `applyAsDouble(subgraph)`. Optimization code does not
-select an objective language on every evaluation.
+Score evaluation invokes `applyAsDouble(subgraph)`.
 
 ### 6.1 Java objective functions
 
@@ -226,38 +212,18 @@ Serializable instance state must remain valid throughout execution. Constructors
 and objective instances should not be treated as unique across an application:
 Spark distribution and candidate copying can create additional instances.
 
-### 6.2 JavaScript objective functions
-
-The distributed JavaScript definition contains source text and a source name.
-It does not serialize a live JavaScript context.
-
-Each initial solution opens its own runtime and resolves the script's
-`evaluate(subgraph)` function. Candidate evaluations reuse that runtime.
-
-Candidate copies within the same run reuse the evaluator through
-`ObjectiveCopyStrategy`. They do not initialize a new runtime for every copy.
-
-Evaluator access is synchronized to prevent concurrent use of a context.
-Independent optimization runs do not share that context.
-
-The initial evaluation occurs on the aggregation thread; subsequent search
-evaluations can occur on the run's executor thread. Synchronization permits
-sequential access across that handoff.
-
-### 6.3 Ownership boundaries
+### 6.2 Ownership boundaries
 
 | Resource | Owner or scope |
 |---|---|
-| Java class name or script path | Application configuration |
-| Loaded Java objective or portable script definition | Distributed aggregation |
-| Open JavaScript context | One initial solution's optimization run |
+| Java class name | Application configuration |
+| Loaded Java objective | Distributed aggregation |
 | Working candidates | Metaheuristic execution |
 | Neighborhood instances | One initial solution's optimization run |
 | Optimization executor | One initial solution's optimization run |
 | Spark and Fractal contexts | Application |
 
-These boundaries govern cleanup and sharing. In particular, copying a candidate
-does not transfer ownership of its run's JavaScript context.
+These boundaries govern cleanup and sharing.
 
 ## 7. Timing and cancellation
 
@@ -278,10 +244,6 @@ checks the target's finished state before updating it.
 Interruption is cooperative. It does not guarantee immediate termination of
 arbitrary Java code or operations that do not respond to interruption.
 
-JavaScript cleanup closes the run's context with cancellation enabled. This
-does not provide a hard termination guarantee for arbitrary blocking Java
-operations called from a script.
-
 The per-run timeout is therefore not a total application deadline.
 
 ## 8. Failures and cleanup
@@ -292,15 +254,13 @@ application creates Spark contexts.
 Failures can also occur later, including:
 
 - Missing dependencies on workers.
-- Invalid JavaScript syntax or a missing entry point.
 - Exceptions from objective function evaluation.
-- Invalid JavaScript return values.
 - Graph-loading or optimization failures.
 
 Objective function failures are propagated as execution failures rather than
 silently converted to scores.
 
-Run cleanup shuts down the executor and closes JavaScript resources.
+Run cleanup shuts down the executor.
 Application cleanup stops the Fractal and Spark contexts through `finally`
 blocks.
 
@@ -317,7 +277,7 @@ The architecture separates problem scoring from search coordination.
 
 | Extension | Integration required |
 |---|---|
-| Objective function | Supply a compatible external Java class or JavaScript function |
+| Objective function | Supply a compatible external Java class |
 | Metaheuristic | Implement the search interface and integrate algorithm selection |
 | Neighborhood | Implement the neighborhood interface and configure its use in the application |
 | Initial solution generation | Implement or select a Fractal enumerator and configure the extension pipeline |

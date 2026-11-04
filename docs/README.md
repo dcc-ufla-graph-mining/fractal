@@ -12,7 +12,7 @@ start with the [project README](../README.md).
 |---|---|
 | [Architecture](architecture.md) | Component responsibilities, execution flow, parallel execution, resource ownership, and cancellation |
 | [Solution representation](solution-representation.md) | Candidate data structures, graph access, mutation, cached scores, copying, and serialization |
-| [Objective functions](objective-functions.md) | Scoring contract, Java and JavaScript implementations, loading, examples, and troubleshooting |
+| [Objective functions](objective-functions.md) | Scoring contract, Java implementations, loading, examples, and troubleshooting |
 | [Neighborhoods](neighborhoods.md) | Move-selection contracts, addition/removal/swap behavior, tabu handling, and extension instructions |
 | [Metaheuristics](metaheuristics.md) | VNS, ILS, TS, search coordination, termination, and algorithm integration |
 | [Initial solution generation](initial-solution-generation.md) | Fractal enumerators, current sampling behavior, partition configuration, and custom generation strategies |

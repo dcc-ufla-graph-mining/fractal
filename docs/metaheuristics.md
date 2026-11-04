@@ -428,9 +428,9 @@ Implement `SubgraphOptimizationMetaheuristic.optimization`.
 Use separate working candidates when exploration may worsen a solution.
 Initialize working copies through `copyTo`, and preserve score consistency.
 
-Do not create application Spark contexts, load objective source files, or
-initialize another objective runtime inside the algorithm. Those responsibilities
-belong to orchestration and objective handling.
+Do not create application Spark contexts or load objective function classes
+inside the algorithm. Those responsibilities belong to orchestration and
+objective handling.
 
 ### 10.3 Integrate selection
 
@@ -479,7 +479,7 @@ A method named local search is not necessarily cheap. One neighborhood call
 can examine many candidates, and one candidate evaluation can itself be costly.
 
 Compare algorithms using both result quality and execution cost. Under a fixed
-time limit, different objective implementation formats can permit different
-numbers of search steps.
+time limit, objective evaluation cost influences the number of search steps
+that can be completed.
 
 None of the provided metaheuristics guarantees a globally optimal solution.
