@@ -1,6 +1,6 @@
 # Documentation
 
-This directory explains how Fractal GM-Opt works and how to implement or extend
+This directory explains how Fractal CSOpt works and how to implement or extend
 its components.
 
 For requirements, installation, command-line options, and execution examples,
@@ -48,7 +48,7 @@ These guides explain how those methods and components work together.
 
 ## Fractal reference
 
-Fractal GM-Opt builds on [Fractal](https://github.com/dccspeed/fractal), which
+Fractal CSOpt builds on [Fractal](https://github.com/dccspeed/fractal), which
 provides graph-processing infrastructure on Apache Spark.
 
 Upstream Fractal documentation is useful for understanding graph access,

@@ -3,7 +3,7 @@
 A neighborhood defines transformations that produce nearby candidate solutions.
 A metaheuristic decides how and when to use those transformations.
 
-Fractal GM-Opt currently implements vertex addition, vertex removal, and vertex
+Fractal CSOpt currently implements vertex addition, vertex removal, and vertex
 swapping. Developers can add other neighborhoods by implementing
 `SolutionNeighborhood` and integrating the implementation into the application.
 

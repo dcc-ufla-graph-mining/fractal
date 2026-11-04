@@ -1,6 +1,6 @@
 # Solution representation
 
-Fractal GM-Opt represents an optimization candidate with
+Fractal CSOpt represents an optimization candidate with
 `VertexInducedOptimizationSubgraph`.
 
 This class stores candidate membership, internal adjacency lists, cached counts,

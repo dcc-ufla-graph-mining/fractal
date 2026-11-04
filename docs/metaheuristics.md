@@ -3,7 +3,7 @@
 A metaheuristic coordinates the exploration of candidate solutions through
 neighborhood operations.
 
-Fractal GM-Opt currently implements Variable Neighborhood Search (VNS),
+Fractal CSOpt currently implements Variable Neighborhood Search (VNS),
 Iterated Local Search (ILS), and Tabu Search (TS). These are available strategies,
 not the complete scope of the framework.
 

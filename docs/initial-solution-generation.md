@@ -242,7 +242,7 @@ One related implementation is `SamplingEnumerator`.
 
 | Aspect | `RandomWalkEnumerator` | `SamplingEnumerator` |
 |---|---|---|
-| Current GM-Opt selection | Selected by the application | Not selected by the application |
+| Current CSOpt selection | Selected by the application | Not selected by the application |
 | Starting choices | Explicit sampled starting vertices | Base first-level generation |
 | Later choices | Retains one extension | Probabilistically retains extensions |
 | Main configuration | `samples_per_thread`, `random_walk_seed` | `sampling_fraction`, `sampling_seed` |

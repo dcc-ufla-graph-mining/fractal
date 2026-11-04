@@ -1,6 +1,6 @@
 # Architecture
 
-Fractal GM-Opt coordinates neighborhood-search metaheuristics to optimize
+Fractal CSOpt coordinates neighborhood-search metaheuristics to optimize
 vertex-induced subgraphs according to a user-defined objective function.
 
 This document describes the component responsibilities, execution flow, and
@@ -13,7 +13,7 @@ The system combines three layers:
 
 | Layer | Responsibility |
 |---|---|
-| Fractal GM-Opt | Objective evaluation, optimization subgraphs, metaheuristics, neighborhoods, and application orchestration |
+| Fractal CSOpt | Objective evaluation, optimization subgraphs, metaheuristics, neighborhoods, and application orchestration |
 | Fractal | Input graph access, subgraph enumeration, and aggregation infrastructure |
 | Apache Spark | Task scheduling and execution infrastructure |
 
