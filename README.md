@@ -33,9 +33,7 @@ Developers can implement additional strategies.
 The current application lets users select a metaheuristic through the CLI.
 Neighborhoods and initial solution generation are configured in application code.
 
-Users can implement their own objective functions without modifying the framework.
-Java classes and JavaScript files are supported as alternative ways to provide
-an objective function.
+Users can implement their own objective functions as Java classes without modifying the framework. These classes are compiled separately and supplied when launching an optimization.
 
 ## 2. Setup and execution
 
@@ -53,9 +51,6 @@ Use:
 
 Gradle 8.0 is provided through the repository's wrapper. A separate Gradle
 installation is not required.
-
-JavaScript execution uses an embedded GraalJS runtime. Node.js and a separate
-JavaScript installation are not required.
 
 ### 2.2 Configure the environment
 
@@ -79,16 +74,13 @@ Check the installations:
 The framework launcher determines `FRACTAL_HOME` from its own location. You do not
 need to set it manually for the commands in this README.
 
-The dependency versions used for embedded JavaScript execution are configured in
-`conf/javascript-runtime.properties`.
-
 ### 2.3 Obtain and build the framework
 
 Clone the repository and enter its directory:
 
 ```bash
-git clone https://github.com/dcc-ufla-graph-mining/fractal/tree/fractal-gm-opt
-cd fractal-gm-opt
+git clone --branch fractal-csopt https://github.com/dcc-ufla-graph-mining/fractal.git
+cd fractal
 ```
 
 Build the framework:
@@ -105,24 +97,36 @@ the independent Java objective function project.
 
 ### 2.4 Run an optimization
 
-Below is an example of a command to run the system:
+Before running this example, prepare and compile the Java objective functions:
+
+```bash
+./gradlew :fractal-core:prepareObjectiveContext
+./gradlew -p objectives/java build
+```
+
+Section 3 explains how to implement an objective function. The following command
+uses the example class `user.DensityObjective`:
 
 ```bash
 master_memory=4g \
 worker_cores=4 \
 app_class=br.ufmg.cs.systems.fractal.apps.SubgraphOptimizationApp \
-args="--graph data/citeseer/ --iv 10 --is 20 --tl 1000 --objective-class objectives/javascript/density.js --mh vns" \
+args="--graph data/citeseer/ --iv 10 --is 20 --tl 1000 --objective-class user.DensityObjective --mh vns" \
 ./bin/fractal-custom-app.sh
 ```
 
 This execution:
 
-- Loads `data/citeseer/` graph.
+- Loads the graph from `data/citeseer/`.
 - Generates initial solutions containing 10 vertices.
 - Targets 20 initial solutions.
-- Uses the metaheuristic VNS with a 1000ms metaheuristic time limit per initial solution.
-- Uses the supplied objective function stored in `objectives/javascript/density.js` to score candidates.
-- Runs with 4 threads and 4g of memory under the launcher's default local Spark configuration.
+- Uses VNS with a 1000 ms metaheuristic time limit per initial solution.
+- Evaluates candidates using `user.DensityObjective`.
+- Uses four threads under the launcher's default local Spark configuration
+  and allocates 4 GB of driver memory.
+
+The launcher automatically includes
+`objectives/java/build/libs/objectives.jar` when it exists and `jars` is unset.
 
 To use ILS, replace `--mh vns` with `--mh ils`.
 
@@ -132,9 +136,8 @@ To use TS, select `--mh ts` and supply a tabu list capacity, for example:
 --mh ts --tabu-list 10
 ```
 
-The application requires exactly one objective function input:
-`--objective-file` or `--objective-class`.
-Section 3 explains how to implement and supply each format.
+Supply the fully qualified Java class name through `--objective-class`.
+The value must include the package name, such as `user.DensityObjective`, rather than a source file path.
 
 ### 2.5 Command-line reference
 
@@ -147,8 +150,7 @@ Application options are supplied inside the `args` environment variable.
 | `--initial-solutions` | `--is` | Target number of initial solutions | Required; positive integer |
 | `--time-limit-ms` | `--tl` | Metaheuristic time limit per initial solution, in milliseconds | Required; positive integer |
 | `--metaheuristic` | `--mh` | `vns`, `ils`, or `ts` | Required |
-| `--objective-class` | `--objective-java` | Java objective function class name | Required when supplying a Java implementation |
-| `--objective-file` | `--objective-javascript` | JavaScript objective function file path | Required when supplying a JavaScript implementation |
+| `--objective-class` | `--objective-java` | Fully qualified Java objective function class name | Required |
 | `--seed` | — | Integer passed to the sampling strategy; `-1` sets a random seed  | `-1` |
 | `--graph-label-type` | `--label` | `unlabeled`, `vertexlabeled`, or `vertexedgelabeled` | `unlabeled` |
 | `--tabu-list-length` | `--tabu-list` | Tabu list capacity | Required for TS; positive integer |
@@ -230,12 +232,10 @@ The application logs search progress and a final summary containing:
 The final aggregation prefers the larger subgraph when scores are equal.
 
 `ElapsedTimeMs` measures the optimization pipeline after graph materialization.
-It includes work beyond the individual metaheuristic searches, such as
-JavaScript preparation and result aggregation.
+It includes initial solution generation, individual metaheuristic searches, and result aggregation.
 
-`--time-limit-ms` applies to each metaheuristic execution, not the complete
-application. Objective function preparation and initial-subgraph evaluation are
-outside that timeout.
+`--time-limit-ms` applies to each metaheuristic execution, not the complete application. 
+Objective function preparation and initial-subgraph evaluation are outside that timeout.
 
 Cancellation is not a hard termination guarantee for arbitrary user code.
 
@@ -246,8 +246,6 @@ solution.
 
 | Change | Action before launching again |
 |---|---|
-| JavaScript objective function | Save the script |
-| Java objective function | `./gradlew -p objectives/java build` |
 | Framework implementation | `./gradlew jar` |
 | Framework APIs or dependencies used by Java objective functions | Rebuild the framework, refresh `:fractal-core:prepareObjectiveContext`, and rebuild the objective functions |
 
@@ -273,52 +271,13 @@ Implementations must:
 The framework currently maximizes scores. To express a minimization problem,
 provide a score whose ordering makes larger values preferable.
 
-Java and JavaScript are alternative implementation formats for this contract.
+Implement the objective function as a Java class following the interface and requirements described below.
 
 Objective functions are executable code and should come from trusted sources.
 The current interface exposes mutable Java objects and does not enforce
 read-only access or provide process isolation.
 
-### 3.1 Implement an objective function in JavaScript
-
-Create a UTF-8 file defining a synchronous `evaluate(subgraph)` function:
-
-```javascript
-/**
- * Returns edges per vertex without modifying the candidate.
- */
-function evaluate(subgraph) {
-    var vertices = subgraph.getNumVertices();
-
-    if (vertices === 0) {
-        return 0.0;
-    }
-
-    return subgraph.getNumEdges() / vertices;
-}
-```
-
-Save it, for example, as:
-
-`objectives/javascript/density.js`
-
-Supply its path using:
-
-```bash
---objective-file objectives/javascript/density.js
-```
-
-The driver reads the source and distributes its contents with the optimization
-work. Workers do not need access to the original local script path.
-
-Each initial solution receives a separate JavaScript runtime. Candidate copies
-within that optimization run reuse its evaluator.
-
-The adapter rejects nonnumeric results, `NaN`, and infinity.
-
-Execution is embedded in the JVM. Node.js APIs are not available.
-
-### 3.2 Implement an objective function in Java
+### 3.1 Implement an objective function in Java
 
 Java implementations use the following interface:
 
@@ -413,8 +372,9 @@ or when objective functions need updated framework APIs or dependencies.
 Additional dependencies used by custom implementations must also be available
 during compilation and Spark execution.
 
-The current Java path expects finite scores but does not enforce the same
-finite-score validation as the JavaScript adapter.
+Objective functions must return finite scores. The current Java implementation
+does not automatically reject `NaN` or infinite values, so the objective function
+must ensure that its results satisfy this requirement.
 
 ## 4. Extend the search strategies
 
@@ -462,7 +422,6 @@ may differ.
 | `fractal-core/` | Fractal infrastructure and optimization components |
 | `fractal-apps/` | Application entry point, CLI, and orchestration |
 | `objectives/java/` | Independently compiled Java objective functions |
-| `objectives/javascript/` | JavaScript objective functions |
 | `bin/` | Spark launch scripts |
 | `conf/` | Runtime and logging configuration |
 | `data/` | Graph examples |
